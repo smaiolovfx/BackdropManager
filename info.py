@@ -1,0 +1,6 @@
+""" Version/author information """
+__version__ = "1.4"
+__author__ = "Samantha Maiolo"
+__date__ = "Sep 30 2022"
+__mail__ = "samanthamaiolovfx@gmail.com"
+#__web__ = ""
