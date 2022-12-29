@@ -1239,7 +1239,7 @@ class BackdropManagerUI(QtWidgets.QDialog):
             # Create Backdrop
             n = nuke.nodes.BackdropNode(xpos = bdX, bdwidth = bdW - bdX, ypos = bdY, bdheight = bdH - bdY, label = f + b + i + txt, z_order = self.zorder.value(), tile_color = color, bookmark = self.bm.isChecked(), note_font = self.font.currentText(), note_font_size = self.fsize.value())
             if nuke_ver >= 12:     
-               n['appearance'].setValue(self.style_drop.currentText())
+               n['appearance'].setValue(str(self.style_drop.currentText()))
                n['border_width'].setValue(self.w.value())            
            
         else:
@@ -1251,7 +1251,7 @@ class BackdropManagerUI(QtWidgets.QDialog):
             n['note_font'].setValue(self.font.currentText())
             n['note_font_size'].setValue(self.fsize.value())
             if nuke_ver >= 12:     
-               n['appearance'].setValue(self.style_drop.currentText())
+               n['appearance'].setValue(str(self.style_drop.currentText()))
                n['border_width'].setValue(self.w.value())
                
         # Add button to snap to selected
@@ -1315,7 +1315,7 @@ class BackdropManagerUI(QtWidgets.QDialog):
             n['note_font'].setValue(self.font.currentText())
             n['note_font_size'].setValue(self.fsize.value()) 
             if nuke_ver >= 12:
-               n['appearance'].setValue(self.style_drop.currentText())
+               n['appearance'].setValue(str(self.style_drop.currentText()))
                n['border_width'].setValue(self.w.value())
                
     def switch(self):
