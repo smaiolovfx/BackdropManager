@@ -20,7 +20,7 @@ except ImportError:
         # Or PySide for Nuke 10
         from PySide import QtCore, QtGui, QtGui as QtWidgets
         from PySide.QtCore import Qt
-                
+        
 nuke.tprint('BackdropManager v{0}, built {1}.\n'
             'Copyright (c) 2022-{2} Samantha Maiolo.'
             ' All Rights Reserved.'.format(__version__, __date__, __date__.split(" ")[-1]))        
@@ -58,8 +58,8 @@ def hex2interface(hexColor):
     Convert a color stored as hex to a 32 bit value as used by nuke for interface colors.
     '''    
     hexColor = hexColor.lstrip('#')
-    return int(hexColor+'00', 16)   
-    
+    return int(hexColor+'00', 16)    
+
 def rgb2interface(rgb):
     '''
     Convert a color stored as rgb values to a 32 bit value as used by nuke for interface colors.
@@ -77,13 +77,13 @@ def _widget_with_label(towrap, text):
     layout.addWidget(towrap)
     w.setLayout(layout)
     return w     
-        
+    
 def setCurrentText(widget, text):
     """ Change setCurrentText to a function to work with Nuke10"""
     index = widget.findText(text, QtCore.Qt.MatchFixedString)
     if index >= 0:
-        widget.setCurrentIndex(index)
-    
+        widget.setCurrentIndex(index)            
+
 class DragButton(QtWidgets.QPushButton):
     def set_data(self, data):
         self.data = data
@@ -98,7 +98,46 @@ class DragButton(QtWidgets.QPushButton):
             self.render(pixmap)
             drag.setPixmap(pixmap)
 
-            drag.exec_(Qt.MoveAction)    
+            drag.exec_(Qt.MoveAction)
+
+def filter(list):
+    backdrop_dict = {}
+    area = []
+    for x in list:
+        if x.Class() == 'BackdropNode':
+            a = int(x['bdwidth'].value() * x['bdheight'].value())
+            backdrop_dict[x] = a
+            area.append(a)
+    area.sort()
+    return(area, backdrop_dict)
+
+def snap():
+    settings = Overrides()        
+    d = settings.restore()        
+    selNodes = nuke.selectedNodes()
+    padding = d['padding']
+    if len(selNodes) == 0: 
+        pass
+    else:
+        a = filter(selNodes)[0]
+        b = filter(selNodes)[1]
+        if a == []:
+            return
+        else:
+            largest = [k for k, v in b.items() if v == a[-1]][0]
+            selNodes.remove(largest)
+            this = largest
+            try:
+                bdX = min([node.xpos() for node in selNodes]) - padding
+                bdY = min([node.ypos() for node in selNodes]) - padding - 60
+                bdW = max([node.xpos() + node.screenWidth() for node in selNodes]) + padding
+                bdH = max([node.ypos() + node.screenHeight() for node in selNodes]) + padding
+    
+                this.knob('xpos').setValue(bdX)
+                this.knob('ypos').setValue(bdY)
+                this.knob('bdwidth').setValue(bdW-bdX)
+                this.knob('bdheight').setValue(bdH-bdY)
+            except: pass              
     
 class KeySequenceWidget(QtWidgets.QWidget):
 
@@ -196,7 +235,7 @@ class KeySequenceButton(QtWidgets.QPushButton):
                 self.keyPressEvent(ev)
                 return True
         return QtWidgets.QPushButton.event(self, ev)
-        
+
     def keyPressEvent(self, ev):
         if not self._isrecording:
             return QtWidgets.QPushButton.keyPressEvent(self, ev)
@@ -355,6 +394,8 @@ class Overrides(object):
         self.defaults = {
             'colors': [(0.26, 0.26, 0.26), (0.32, 0.255, 0.19), (0.32, 0.19, 0.19), (0.32, 0.19, 0.255), (0.255, 0.19, 0.32), (0.19, 0.19, 0.32), (0.19, 0.255, 0.32), (0.19, 0.32, 0.19)],
             'shortcut': 'CTRL+B',
+            'snap': 'CTRL+SHIFT+B',
+            'padding': 40,
             'style': 'Fill',
             'width': 15,
             'zorder': 0,
@@ -375,6 +416,8 @@ class Overrides(object):
         self.defaults = {
             'colors': [(0.26, 0.26, 0.26), (0.32, 0.255, 0.19), (0.32, 0.19, 0.19), (0.32, 0.19, 0.255), (0.255, 0.19, 0.32), (0.19, 0.19, 0.32), (0.19, 0.255, 0.32), (0.19, 0.32, 0.19)],
             'shortcut': 'CTRL+B',
+            'snap': 'CTRL+SHIFT+B',
+            'padding': 40,
             'style': 'Fill',
             'width': 15,
             'zorder': 0,
@@ -452,7 +495,33 @@ class BackdropManagerSettings(QtWidgets.QDialog):
         self.shortcut_widget.keySequenceChanged.connect(self.updateSC)
         box.addWidget(_widget_with_label(self.shortcut_widget, "Shortcut"))
         
-        box.addStretch(1)
+        box.addStretch(1)        
+        
+        # Snap box
+        box7 = QtWidgets.QHBoxLayout()
+        box7.setContentsMargins(40,0,0,0)
+        box7.setSpacing(10)
+        set_layout.addLayout(box7)
+        
+        # Snap
+        self.ks = QtGui.QKeySequence(d['snap'])
+        self.snap_widget = KeySequenceWidget()
+        self.snap_widget.setShortcut(self.ks)
+        self.snap_widget.keySequenceChanged.connect(self.updateSnap)
+        box7.addWidget(_widget_with_label(self.snap_widget, "Snap"))
+        
+        # Padding
+        self.p = d['padding']
+
+        self.psize = QtWidgets.QSpinBox(self)
+        self.psize.setToolTip("Set default snap padding size.")
+        self.psize.setFixedSize(80,24)
+        self.psize.setRange(0,999)
+        self.psize.setValue(self.p)
+        self.psize.valueChanged.connect(self.updateP)
+        box7.addWidget(_widget_with_label(self.psize, "padding"))        
+        
+        box7.addStretch(1)        
 
         # Font box
         box2 = QtWidgets.QHBoxLayout()
@@ -651,7 +720,7 @@ class BackdropManagerSettings(QtWidgets.QDialog):
         addb.clicked.connect(self.add) 
         addb.setFixedSize(20,20)        
         pmbox.addWidget(addb)
-        
+                
         """
         cb = QtWidgets.QCheckBox("Enable +/- in Backdrop Manager panel")
         cb.setToolTip("When this is checked you will be able to add and remove colors from the Backdrop Manager panel too.")
@@ -802,16 +871,28 @@ class BackdropManagerSettings(QtWidgets.QDialog):
             gui()
 
     def updateFS(self):
-        """Saves shortcut"""
+        """Saves font size"""
         val = self.fsize.value()
         d = self.settings.restore()
         d['font_size'] = val
+        
+    def updateP(self):
+        """Saves padding"""
+        val = self.psize.value()
+        d = self.settings.restore()
+        d['padding'] = val        
        
     def updateSC(self):
         """Saves shortcut"""
         val = self.shortcut_widget.shortcut().toString()
         d = self.settings.restore()
         d['shortcut'] = val
+        
+    def updateSnap(self):
+        """Saves snap shortcut"""
+        val = self.snap_widget.shortcut().toString()
+        d = self.settings.restore()
+        d['snap'] = val        
                
     def updateW(self):
         """Saves width"""
@@ -1004,7 +1085,7 @@ class BackdropManagerUI(QtWidgets.QDialog):
         self.colBox.activated.connect(self.changeColor)
         
         box.addStretch(1)
-               
+       
         # Label box
         self.box6 = QtWidgets.QHBoxLayout()
         self.box6.setContentsMargins(40,0,0,0)
@@ -1199,7 +1280,7 @@ class BackdropManagerUI(QtWidgets.QDialog):
     def makeBackdrop(self):
         """Makes a new backdrop"""
         self.close()
-
+        p = self.data['padding']
         txt = self.label.text()
         f = "<" + (self.format.currentText()) + ">"
         idx = self.colBox.currentIndex()
@@ -1239,7 +1320,7 @@ class BackdropManagerUI(QtWidgets.QDialog):
             # Create Backdrop
             n = nuke.nodes.BackdropNode(xpos = bdX, bdwidth = bdW - bdX, ypos = bdY, bdheight = bdH - bdY, label = f + b + i + txt, z_order = self.zorder.value(), tile_color = color, bookmark = self.bm.isChecked(), note_font = self.font.currentText(), note_font_size = self.fsize.value())
             if nuke_ver >= 12:     
-               n['appearance'].setValue(str(self.style_drop.currentText()))
+               n['appearance'].setValue(self.style_drop.currentText())
                n['border_width'].setValue(self.w.value())            
            
         else:
@@ -1251,13 +1332,13 @@ class BackdropManagerUI(QtWidgets.QDialog):
             n['note_font'].setValue(self.font.currentText())
             n['note_font_size'].setValue(self.fsize.value())
             if nuke_ver >= 12:     
-               n['appearance'].setValue(str(self.style_drop.currentText()))
+               n['appearance'].setValue(self.style_drop.currentText())
                n['border_width'].setValue(self.w.value())
                
         # Add button to snap to selected
         padding = nuke.Int_Knob('padding', 'Padding')
         n.addKnob(padding)
-        padding.setValue(40)
+        padding.setValue(p)
         button = nuke.PyScript_Knob('snap','Snap to selected nodes')
         button.setValue("this = nuke.thisNode()\nselNodes = nuke.selectedNodes()\npadding = this.knob('padding').value()\nif len(selNodes)== 0:\n\tpass\nelse:\n\tbdX = min([node.xpos() for node in selNodes]) - padding\n\tbdY = min([node.ypos() for node in selNodes]) - padding - 60\n\tbdW = max([node.xpos() + node.screenWidth() for node in selNodes]) + padding\n\tbdH = max([node.ypos() + node.screenHeight() for node in selNodes]) + padding\n\tthis.knob('xpos').setValue(bdX)\n\tthis.knob('ypos').setValue(bdY)\n\tthis.knob('bdwidth').setValue(bdW-bdX)\n\tthis.knob('bdheight').setValue(bdH-bdY)")
         n.addKnob(button)
@@ -1315,7 +1396,7 @@ class BackdropManagerUI(QtWidgets.QDialog):
             n['note_font'].setValue(self.font.currentText())
             n['note_font_size'].setValue(self.fsize.value()) 
             if nuke_ver >= 12:
-               n['appearance'].setValue(str(self.style_drop.currentText()))
+               n['appearance'].setValue(self.style_drop.currentText())
                n['border_width'].setValue(self.w.value())
                
     def switch(self):
@@ -1471,6 +1552,13 @@ class BackdropPanel(QtWidgets.QDialog):
         btn.setFixedSize(40,25)
         btn.clicked.connect(self.setStyle)
         gbox.addWidget(btn)    
+        
+        btn = QtWidgets.QPushButton()
+        btn.setIcon(QtGui.QIcon(icon_path + "Snap.png"))
+        btn.setToolTip("Snap backdrop size")
+        btn.setFixedSize(40,25)
+        btn.clicked.connect(snap)
+        gbox.addWidget(btn)                    
         
         btn = QtWidgets.QPushButton()
         btn.setIcon(QtGui.QIcon(icon_path + "Settings.png"))
@@ -1694,8 +1782,8 @@ class BackdropPanel(QtWidgets.QDialog):
             if n['appearance'].value() == 'Fill':
                 n.knob('appearance').setValue('Border')
             else:
-                n.knob('appearance').setValue('Fill')
-  
+                n.knob('appearance').setValue('Fill')    
+
 _sew_instanceEdit = None   
            
 def guiEdit():
@@ -1743,10 +1831,10 @@ def nuke_setup():
     # Menu item to open shortcut editor
     nuke.menu("Nuke").addCommand("Edit/Backdrop Manager Settings", gui)
     nuke.menu("Node Graph").addCommand("Create Backdrop", guiUI, d['shortcut'])
+    nuke.menu("Node Graph").addCommand("Snap Backdrop", snap, d['snap'])    
     panels.registerWidgetAsPanel('nuke.BP', 'Backdrop Manager', 'BackdropPanel')
     
     nuke.BP = BackdropPanel
 
-       
 if __name__ == "__main__":
     nuke_setup()
