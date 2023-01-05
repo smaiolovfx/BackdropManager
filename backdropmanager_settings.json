@@ -49,6 +49,8 @@
   "font_size": 60,
   "italic": false,
   "shortcut": "CTRL+B",
+  "snap": "CTRL+SHIFT+B",
+  "padding": 40,
   "style": "Fill",
   "width": 15,
   "zorder": 0
