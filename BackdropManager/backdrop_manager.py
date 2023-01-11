@@ -89,7 +89,7 @@ class DragButton(QtWidgets.QPushButton):
         self.data = data
         
     def mouseMoveEvent(self, e):
-        if e.buttons() == Qt.LeftButton:
+        if e.buttons() == Qt.MiddleButton:
             drag = QtGui.QDrag(self)
             mime = QtCore.QMimeData()
             drag.setMimeData(mime)
