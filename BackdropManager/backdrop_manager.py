@@ -376,7 +376,7 @@ def _save_yaml(obj, path):
     try:
         _save_internal()
     except Exception:
-        print("Error saving shortcuteditor settings")
+        print("Error saving BackdropManager settings")
         import traceback
         traceback.print_exc()
 
