@@ -387,7 +387,7 @@ class Overrides(object):
     def save(self):
         settings = {
             'settings': self.defaults,
-            'version': 1,
+            'version': 2,
                     }
         _save_yaml(obj=settings, path=self.settings_path)
        
@@ -436,7 +436,7 @@ class Overrides(object):
         if settings is None:
             return self.defaults
 
-        elif int(settings['version']) == 1:
+        elif int(settings['version']) == 2:
             self.defaults = settings['settings']
             return self.defaults
 
@@ -449,7 +449,7 @@ class Overrides(object):
     def load(self):
         settings = {
             'settings': self.defaults,
-            'version': 1,
+            'version': 2,
                     }
         return settings
 
