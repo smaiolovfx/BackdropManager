@@ -441,7 +441,7 @@ class Overrides(object):
             return self.defaults
 
         else:
-            nuke.warning("Wrong version of backdrop manager config, nothing loaded (version was %s expected), path was %r" % (
+            nuke.warning("Wrong version of backdrop manager config, nothing loaded (version %s loaded, version 2 expected), path was %r. Please either delete your settings file or re-download the latest BackdropManager." % (
                 int(settings['version']),
                 self.settings_path))
             return
