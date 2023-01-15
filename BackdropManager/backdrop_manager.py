@@ -4,6 +4,7 @@ import os
 from functools import partial
 import traceback
 import colorsys
+import datetime
 
 from BackdropManager.info import __version__, __date__
 
@@ -21,9 +22,12 @@ except ImportError:
         from PySide import QtCore, QtGui, QtGui as QtWidgets
         from PySide.QtCore import Qt
         
+today = datetime.date.today()
+year = today.year
+
 nuke.tprint('BackdropManager v{0}, built {1}.\n'
             'Copyright (c) 2022-{2} Samantha Maiolo.'
-            ' All Rights Reserved.'.format(__version__, __date__, __date__.split(" ")[-1]))        
+            ' All Rights Reserved.'.format(__version__, __date__, year))    
         
 icon_path = os.path.expanduser("~/.nuke/BackdropManager/icons/")
 
