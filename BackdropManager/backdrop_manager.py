@@ -33,6 +33,58 @@ icon_path = os.path.expanduser("~/.nuke/BackdropManager/icons/")
 
 nuke_ver = nuke.NUKE_VERSION_MAJOR
 
+DAG_TITLE = "Node Graph"
+DAG_OBJECT_NAME = "DAG"
+
+# Get DAG
+def get_dag_widgets(visible=True):
+    """
+    Gets all Qt objects with DAG in the object name. Thanks to Erwan Leroy.
+    """
+    dags = []
+    all_widgets = QtWidgets.QApplication.instance().allWidgets()
+    for widget in all_widgets:
+        if DAG_OBJECT_NAME in widget.objectName():
+            if not visible or (visible and widget.isVisible()):
+                dags.append(widget)
+    return dags
+
+def get_current_dag():
+    """
+    Returns:
+        QtWidgets.QWidget: The currently active DAG
+    """
+    visible_dags = get_dag_widgets(visible=True)
+    for dag in visible_dags:
+        if dag.hasFocus():
+            return dag
+
+    # If None had focus, and we have at least one, use the first one
+    if visible_dags:
+        return visible_dags[0]
+    return None
+
+def get_dag_node(dag_widget):
+    """ Get a DAG node for a given dag widget. """
+    title = str(dag_widget.windowTitle())
+    if DAG_TITLE not in title:
+        return None
+    if title == DAG_TITLE:
+        return nuke.root()
+    return nuke.toNode(title.replace(" " + DAG_TITLE, ""))
+    
+def wrapped(func):
+    """ Executes the function argument in the currently active DAG. """
+    def wrapper(*args, **kwargs):
+        active_dag = get_current_dag()
+        dag_node = None
+        if active_dag:
+            node = get_dag_node(active_dag)
+            with node:
+               result = func(*args, **kwargs)
+               return result
+    return wrapper
+
 def interface2rgb(hexValue, normalize = True):
     '''
     Convert a color stored as a 32 bit value as used by nuke for interface colors to normalized rgb values.
@@ -105,6 +157,7 @@ class DragButton(QtWidgets.QPushButton):
             drag.exec_(Qt.MoveAction)
 
 def filter(list):
+    """ Filter through selected backdrops for the largest. """
     backdrop_dict = {}
     area = []
     for x in list:
@@ -116,6 +169,7 @@ def filter(list):
     return(area, backdrop_dict)
 
 def snap():
+    """ Snap backdrops to the selected nodes. """
     settings = Overrides()        
     d = settings.restore()        
     selNodes = nuke.selectedNodes()
@@ -136,11 +190,12 @@ def snap():
                 bdY = min([node.ypos() for node in selNodes]) - padding - 60
                 bdW = max([node.xpos() + node.screenWidth() for node in selNodes]) + padding
                 bdH = max([node.ypos() + node.screenHeight() for node in selNodes]) + padding
-    
-                this.knob('xpos').setValue(bdX)
-                this.knob('ypos').setValue(bdY)
+                nuke.Undo.begin()
                 this.knob('bdwidth').setValue(bdW-bdX)
-                this.knob('bdheight').setValue(bdH-bdY)
+                this.knob('xpos').setValue(bdX)                
+                this.knob('bdheight').setValue(bdH-bdY)  
+                this.knob('ypos').setValue(bdY)
+                nuke.Undo.end()
             except: pass              
     
 class KeySequenceWidget(QtWidgets.QWidget):
@@ -1222,19 +1277,11 @@ class BackdropManagerUI(QtWidgets.QDialog):
         # Z order
         zval = self.data['zorder']
        
-        """Check if trying to make a backdrop around a backdrop, if so, show z order below"""
-        sel = nuke.selectedNodes()
-        zlist = []
-       
-        for n in sel:
-            if n.Class() == 'BackdropNode':
-                zlist.append(int(n['z_order'].value()))
-       
-        try:
-            zlist.sort()
-            if zlist[0] <= zval:
-                zval = (zlist[0] - 1)
-        except: pass
+        """Check if trying to make a backdrop around a backdrop, if so, default to z order below"""
+        selected_bd = [n for n in nuke.selectedNodes() if n.Class() == 'BackdropNode']
+        # if there are backdropNodes in our list put the new one immediately behind the farthest one
+        if selected_bd:
+            zval = min([node['z_order'].value() for node in selected_bd]) - 1        
              
         self.zorder = QtWidgets.QSpinBox(self)
         self.zorder.setFixedSize(80,25)
@@ -1248,7 +1295,7 @@ class BackdropManagerUI(QtWidgets.QDialog):
         self.buttonBox = QtWidgets.QDialogButtonBox(self)
         self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Cancel | QtWidgets.QDialogButtonBox.Ok)
         layout.addWidget(self.buttonBox)
-        self.buttonBox.accepted.connect(self.makeBackdrop)
+        self.buttonBox.accepted.connect(wrapped(self.makeBackdrop))
         self.buttonBox.rejected.connect(self.close)
        
         self.label.setFocus()
@@ -1279,8 +1326,8 @@ class BackdropManagerUI(QtWidgets.QDialog):
             self.italicv = True
         else:
             self.italicb.setStyleSheet("font: italic; background-color: ;")
-            self.italicv = False  
-       
+            self.italicv = False 
+        
     def makeBackdrop(self):
         """Makes a new backdrop"""
         self.close()
@@ -1316,10 +1363,10 @@ class BackdropManagerUI(QtWidgets.QDialog):
             maxScreenW = max ([n.screenWidth() for n in selectedNodes])
            
             # Adjust Bounds
-            bdX = int(bdX - 40)
-            bdY = int(bdY - 100)
-            bdW = int(bdW + 40)
-            bdH = int(bdH + 40)
+            bdX = int(bdX - p)
+            bdY = int(bdY - (p + 60))
+            bdW = int(bdW + p)
+            bdH = int(bdH + p)
            
             # Create Backdrop
             n = nuke.nodes.BackdropNode(xpos = bdX, bdwidth = bdW - bdX, ypos = bdY, bdheight = bdH - bdY, label = f + b + i + txt, z_order = self.zorder.value(), tile_color = color, bookmark = self.bm.isChecked(), note_font = self.font.currentText(), note_font_size = self.fsize.value())
@@ -1375,8 +1422,8 @@ class BackdropManagerUI(QtWidgets.QDialog):
     def editBackdrop(self):   
         """Edits selected backdrops"""                     
         self.close()
-                
         txt = self.label.text()
+        z = self.zorder.value()
         f = "<" + self.format.currentText() + ">"
         color = self.colBox.currentText()
         color = hex2interface(color)
@@ -1389,41 +1436,63 @@ class BackdropManagerUI(QtWidgets.QDialog):
             i = "<i>"
         else:
             i = ""
-           
-        for n in nuke.selectedNodes():
-            if self.labelt.isChecked():
-                n['label'].setValue(f + b + i + txt)
-            if self.zt.isChecked():
-                n['z_order'].setValue(self.zorder.value())
-            n['tile_color'].setValue(color)
-            n['bookmark'].setValue(self.bm.isChecked())
-            n['note_font'].setValue(self.font.currentText())
-            n['note_font_size'].setValue(self.fsize.value()) 
-            if nuke_ver >= 12:
-               n['appearance'].setValue(self.style_drop.currentText())
-               n['border_width'].setValue(self.w.value())
-               
+            
+        active_dag = get_current_dag()
+        dag_node = None
+        if active_dag:
+            node = get_dag_node(active_dag)
+            with node:            
+                for n in nuke.selectedNodes():
+                    if self.labelt.isChecked():
+                        n['label'].setValue(f + b + i + txt)
+                    if self.zt.isChecked():
+                        n['z_order'].setValue(z)
+                    n['tile_color'].setValue(color)
+                    n['bookmark'].setValue(self.bm.isChecked())
+                    n['note_font'].setValue(self.font.currentText())
+                    n['note_font_size'].setValue(self.fsize.value()) 
+                    if nuke_ver >= 12:
+                       n['appearance'].setValue(self.style_drop.currentText())
+                       n['border_width'].setValue(self.w.value())
+                            
     def switch(self):
         """This is run when the edit button in the panel is pressed. Sets up the widget to edit mode"""
+        
+        active_dag = get_current_dag()
+        dag_node = None
+        if active_dag:
+            node = get_dag_node(active_dag)
+        try:
+            if node:
+                node.begin()
+                sel = nuke.selectedNodes()
+                for n in sel:
+                    n.setSelected(False)
+                    if n.Class() == 'BackdropNode':
+                        n.setSelected(True)
+                        
+                    sel_l = len(sel)   
+                    
+                    if sel_l == 1:
+                        n = nuke.selectedNode()
+                        lbl = n['label'].value()
+                        col = n['tile_color'].value()
+        finally:
+            if node:
+                node.end()
+                nuke.thisGroup().begin()
+                   
         self.setWindowTitle("Edit backdrop")
         self.buttonBox.accepted.disconnect()
         self.buttonBox.accepted.connect(self.editBackdrop)
         
-        for n in nuke.selectedNodes():
-            n.setSelected(False)
-            if n.Class() == 'BackdropNode':
-                n.setSelected(True)
-                
-        if len(nuke.selectedNodes()) > 1:                
+        if sel_l > 1:                
             self.labelt.setVisible(True)
             self.box6.setContentsMargins(16,0,0,0)  
             self.zt.setVisible(True)
-            self.box5.setContentsMargins(0,0,0,0)                
-        
-        if len(nuke.selectedNodes()) == 1:
-            n = nuke.selectedNode()
-            lbl = n['label'].value()
+            self.box5.setContentsMargins(0,0,0,0)  
             
+        elif sel_l == 1:
             if "<center>" in lbl:
                 setCurrentText(self.format, "center")
             else:
@@ -1443,7 +1512,6 @@ class BackdropManagerUI(QtWidgets.QDialog):
                 self.italicv = False
                 self.italicb.setStyleSheet("font: italic; background-color: ;")                
                 
-            col = n['tile_color'].value()
             col = interface2rgb(col)
             col = rgb2hex(col)
 
@@ -1540,28 +1608,28 @@ class BackdropPanel(QtWidgets.QDialog):
         btn.setIcon(QtGui.QIcon(icon_path + "Toggle.png"))
         btn.setToolTip("Toggle fill/border mode on selected backdrops")
         btn.setFixedSize(40,25)        
-        btn.clicked.connect(self.toggle)
+        btn.clicked.connect(wrapped(self.toggle))
         gbox.addWidget(btn)        
         
         btn = QtWidgets.QPushButton()
         btn.setIcon(QtGui.QIcon(icon_path + "Selected.png"))
         btn.setToolTip("Set selected backdrops to default style")
         btn.setFixedSize(40,25)        
-        btn.clicked.connect(self.setStyleSel)
+        btn.clicked.connect(wrapped(self.setStyleSel))
         gbox.addWidget(btn)
         
         btn = QtWidgets.QPushButton()
         btn.setIcon(QtGui.QIcon(icon_path + "All.png"))
         btn.setToolTip("Set all backdrops to default style")
         btn.setFixedSize(40,25)
-        btn.clicked.connect(self.setStyle)
+        btn.clicked.connect(wrapped(self.setStyle))
         gbox.addWidget(btn)    
         
         btn = QtWidgets.QPushButton()
         btn.setIcon(QtGui.QIcon(icon_path + "Snap.png"))
         btn.setToolTip("Snap backdrop size")
         btn.setFixedSize(40,25)
-        btn.clicked.connect(snap)
+        btn.clicked.connect(wrapped(snap))
         gbox.addWidget(btn)                    
         
         btn = QtWidgets.QPushButton()
@@ -1696,7 +1764,7 @@ class BackdropPanel(QtWidgets.QDialog):
             btn.set_data(color)
             btn.setFixedSize(20,20)
             self.box_layout.addWidget(btn)
-            btn.clicked.connect(partial(self.setColor, idx))
+            btn.clicked.connect(partial(wrapped(self.setColor), idx))
             
         # Make button Box
         self.box = QtWidgets.QHBoxLayout()
@@ -1788,7 +1856,7 @@ class BackdropPanel(QtWidgets.QDialog):
             else:
                 n.knob('appearance').setValue('Fill')    
 
-_sew_instanceEdit = None   
+_sew_instanceEdit = None
            
 def guiEdit():
 
@@ -1835,7 +1903,7 @@ def nuke_setup():
     # Menu item to open shortcut editor
     nuke.menu("Nuke").addCommand("Edit/Backdrop Manager Settings", gui)
     nuke.menu("Node Graph").addCommand("Create Backdrop", guiUI, d['shortcut'])
-    nuke.menu("Node Graph").addCommand("Snap Backdrop", snap, d['snap'])    
+    nuke.menu("Node Graph").addCommand("Snap Backdrop", wrapped(snap), d['snap'])    
     panels.registerWidgetAsPanel('nuke.BP', 'Backdrop Manager', 'BackdropPanel')
     
     nuke.BP = BackdropPanel
