@@ -169,7 +169,7 @@ def filter(list):
     return(area, backdrop_dict)
 
 def snap():
-    """ Snap backdrops to the selected nodes. """
+    """ Snap backdrops to the selected nodes. """ 
     settings = Overrides()        
     d = settings.restore()        
     selNodes = nuke.selectedNodes()
@@ -190,14 +190,13 @@ def snap():
                 bdY = min([node.ypos() for node in selNodes]) - padding - 60
                 bdW = max([node.xpos() + node.screenWidth() for node in selNodes]) + padding
                 bdH = max([node.ypos() + node.screenHeight() for node in selNodes]) + padding
-                nuke.Undo.begin()
+                
                 this.knob('bdwidth').setValue(bdW-bdX)
                 this.knob('xpos').setValue(bdX)                
                 this.knob('bdheight').setValue(bdH-bdY)  
                 this.knob('ypos').setValue(bdY)
-                nuke.Undo.end()
-            except: pass              
-    
+            except: pass
+
 class KeySequenceWidget(QtWidgets.QWidget):
 
     keySequenceChanged = QtCore.Signal()
@@ -779,13 +778,6 @@ class BackdropManagerSettings(QtWidgets.QDialog):
         addb.clicked.connect(self.add) 
         addb.setFixedSize(20,20)        
         pmbox.addWidget(addb)
-                
-        """
-        cb = QtWidgets.QCheckBox("Enable +/- in Backdrop Manager panel")
-        cb.setToolTip("When this is checked you will be able to add and remove colors from the Backdrop Manager panel too.")
-        cb.setChecked(0)
-        self.layout.addWidget(cb)
-        """
 
         # Button box
         box7 = QtWidgets.QHBoxLayout()
@@ -813,70 +805,6 @@ class BackdropManagerSettings(QtWidgets.QDialog):
         self.button_close = button_close
 
         self.button_close.setFocus()
-        
-        '''
-        TO DO: Add drag/drop functionality here
-        
-    def event(self, event):
-        if event.type() == QtCore.QEvent.EnterWhatsThisMode:
-            nuke.message('test')
-            QtWidgets.QWhatsThis.leaveWhatsThisMode()
-        return super().event(event)
-        
-        
-    def get_data(self):
-        """Re-order and save colors"""
-        self.settings = Overrides()        
-        d = self.settings.restore()      
-        self.colors = []
-        for n in range(self.box_layout.count()):
-            # Get the widget at each index in turn.
-            try:
-                w = self.box_layout.itemAt(n).widget()
-                self.colors.append(w.data)
-            except: pass
-        d['colors'] = self.colors
-
-        self.settings.save()
-        
-    def dragEnterEvent(self, e):
-        e.accept()
-        
-    def dropEvent(self, e):
-        pos = e.pos()
-        widget = e.source()
-        print(self.mapToGlobal(e.pos()))
-        print(self.mapToGlobal(widget.pos()))
-        print(pos)
-        
-        for n in range(self.box_layout.count()):
-            # Get the widget at each index in turn.
-            w = self.box_layout.itemAt(n).widget()
-            print(self.mapToGlobal(w.pos()))
-            print(w.pos())
-
-            drop_x = False
-            drop_y = False
-         
-            if w.x() - (w.size().width()) <= pos.x(): #<= w.x() + (w.size().width()): #// 2):
-                drop_x = True
-            if self.mapToGlobal(w.pos()).y() - (w.size().height()) <= pos.y() <= self.mapToGlobal(w.pos()).y() + (w.size().height()): #// 2):
-                drop_y = True
-
-            if drop_x is True and drop_y is True:
-                # We are within the x and y of a widget
-                new = self.box_layout.itemAt(n).widget()
-                nc = new.data
-                oc = widget.data
-                widget.setStyleSheet("background-color: %s;" % rgb2hex(nc))
-                widget.data = nc
-                new.setStyleSheet("background-color: %s;" % rgb2hex(oc))
-                new.data = oc
-                self.get_data()
-                break
-
-        e.accept()     
-        '''
         
     def min(self):
         """Remove box"""
@@ -1369,6 +1297,9 @@ class BackdropManagerUI(QtWidgets.QDialog):
             bdH = int(bdH + p)
            
             # Create Backdrop
+            
+            nuke.Undo.begin()
+            
             n = nuke.nodes.BackdropNode(xpos = bdX, bdwidth = bdW - bdX, ypos = bdY, bdheight = bdH - bdY, label = f + b + i + txt, z_order = self.zorder.value(), tile_color = color, bookmark = self.bm.isChecked(), note_font = self.font.currentText(), note_font_size = self.fsize.value())
             if nuke_ver >= 12:     
                n['appearance'].setValue(self.style_drop.currentText())
@@ -1404,6 +1335,8 @@ class BackdropManagerUI(QtWidgets.QDialog):
             node.setSelected(False)
            
         n.setSelected(True)
+        
+        nuke.Undo.end()
         
     def enableL(self):
         """Enables/disables the label button"""
@@ -1640,7 +1573,7 @@ class BackdropPanel(QtWidgets.QDialog):
         gbox.addWidget(btn)            
         
         # Make color boxes
-        self.makeBoxes()
+        self.makeBoxes()   
         
     def get_data(self):
         """Re-order and save colors"""
@@ -1671,8 +1604,6 @@ class BackdropPanel(QtWidgets.QDialog):
             w = self.box_layout.itemAt(n).widget()
             drop_here = pos.x() <= w.x() + w.size().width() // 2
 
-                # We didn't drag past this widget.
-                # insert to the left of it.
             if drop_here:
                 # We didn't drag past this widget.
                 # insert to the left of it.
@@ -1854,9 +1785,13 @@ class BackdropPanel(QtWidgets.QDialog):
             if n['appearance'].value() == 'Fill':
                 n.knob('appearance').setValue('Border')
             else:
-                n.knob('appearance').setValue('Fill')    
+                n.knob('appearance').setValue('Fill')  
+                
+    def updateValue(self):
+        ## Nuke "updateValue" fix        
+        pass                  
 
-_sew_instanceEdit = None
+_sew_instanceEdit = None   
            
 def guiEdit():
 
