@@ -1003,7 +1003,7 @@ def gui():
     if _sew_instance is not None:
         # Already an instance (make it really obvious - focused, in front and under cursor, like other Nuke GUI windows)
         _sew_instance.show()
-         _sew_instance.setFocus()
+        _sew_instance.setFocus()
         _sew_instance.activateWindow()
         _sew_instance.raise_()
         return
