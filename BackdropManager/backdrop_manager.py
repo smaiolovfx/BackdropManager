@@ -524,8 +524,11 @@ class BackdropManagerSettings(QtWidgets.QDialog):
         self.setMinimumSize(460, 420)
         self.setWhatsThis("This sets the default values for backdrop settings. Values can be changed when making a backdrop. Add or change color boxes to set presets for backdrop colors.")
 
-        self.setFocus()
-        
+        # Try moving to last opened position
+        try:
+            self.move(d['xpos'], d['ypos'])
+        except: pass
+                
         # Stack widgets atop each other
         self.layout = QtWidgets.QVBoxLayout()
         self.layout.setSpacing(15)
@@ -966,6 +969,8 @@ class BackdropManagerSettings(QtWidgets.QDialog):
         s = d['settings']
         s['font'] = self.font.currentText()
         s['align'] = self.format.currentText()
+        s['xpos'] = self.pos().x()
+        s['ypos'] = self.pos().y()
         
         if nuke_ver <= 12:
             s['style'] = self.style_drop.currentText()
@@ -998,6 +1003,7 @@ def gui():
     if _sew_instance is not None:
         # Already an instance (make it really obvious - focused, in front and under cursor, like other Nuke GUI windows)
         _sew_instance.show()
+         _sew_instance.setFocus()
         _sew_instance.activateWindow()
         _sew_instance.raise_()
         return
@@ -1306,7 +1312,7 @@ class BackdropManagerUI(QtWidgets.QDialog):
                n['border_width'].setValue(self.w.value())            
            
         else:
-            n = nuke.createNode('BackdropNode')
+            n = nuke.createNode('BackdropNode', inpanel = False)
             n['label'].setValue(f + b + i + txt)
             n['z_order'].setValue(self.zorder.value())
             n['tile_color'].setValue(color)
