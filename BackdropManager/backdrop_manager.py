@@ -5,7 +5,9 @@ from functools import partial
 import traceback
 import colorsys
 import datetime
+
 from BackdropManager.info import __version__, __date__
+
 try:
     # Prefer Qt.py when available
     from Qt import QtCore, QtGui, QtWidgets
@@ -22,14 +24,18 @@ except ImportError:
         
 today = datetime.date.today()
 year = today.year
+
 nuke.tprint('BackdropManager v{0}, built {1}.\n'
             'Copyright (c) 2022-{2} Samantha Maiolo.'
             ' All Rights Reserved.'.format(__version__, __date__, year))    
         
 icon_path = os.path.expanduser("~/.nuke/BackdropManager/icons/")
+
 nuke_ver = nuke.NUKE_VERSION_MAJOR
+
 DAG_TITLE = "Node Graph"
 DAG_OBJECT_NAME = "DAG"
+
 # Get DAG
 def get_dag_widgets(visible=True):
     """
@@ -42,6 +48,7 @@ def get_dag_widgets(visible=True):
             if not visible or (visible and widget.isVisible()):
                 dags.append(widget)
     return dags
+
 def get_current_dag():
     """
     Returns:
@@ -51,10 +58,12 @@ def get_current_dag():
     for dag in visible_dags:
         if dag.hasFocus():
             return dag
+
     # If None had focus, and we have at least one, use the first one
     if visible_dags:
         return visible_dags[0]
     return None
+
 def get_dag_node(dag_widget):
     """ Get a DAG node for a given dag widget. """
     title = str(dag_widget.windowTitle())
@@ -75,19 +84,24 @@ def wrapped(func):
                result = func(*args, **kwargs)
                return result
     return wrapper
+
 def interface2rgb(hexValue, normalize = True):
     '''
     Convert a color stored as a 32 bit value as used by nuke for interface colors to normalized rgb values.
     '''
     return [(0xFF & hexValue >>  i) / 255.0 for i in [24,16,8]]
+
 def rgb2hex(rgbaValues):
     '''
     Convert a color stored as normalized rgb values to a hex.
     '''
     rgbaValues = [int(i * 255) for i in rgbaValues]
+
     if len(rgbaValues) < 3:
         return
+
     return '#%02x%02x%02x' % (rgbaValues[0],rgbaValues[1],rgbaValues[2])
+
 def hex2rgb(hexColor):
     '''
     Convert a color stored as hex to rgb values.
@@ -101,11 +115,13 @@ def hex2interface(hexColor):
     '''    
     hexColor = hexColor.lstrip('#')
     return int(hexColor+'00', 16)    
+
 def rgb2interface(rgb):
     '''
     Convert a color stored as rgb values to a 32 bit value as used by nuke for interface colors.
     '''
     return int('%02x%02x%2x%02x' % (int(rgb[0]*255), int(rgb[1]*255), int(rgb[2]*255),1),16)
+
 def _widget_with_label(towrap, text):
     """Wraps the given widget in a layout, with a label to the left"""
     w = QtWidgets.QWidget()
@@ -123,6 +139,7 @@ def setCurrentText(widget, text):
     index = widget.findText(text, QtCore.Qt.MatchFixedString)
     if index >= 0:
         widget.setCurrentIndex(index)            
+
 class DragButton(QtWidgets.QPushButton):
     def set_data(self, data):
         self.data = data
@@ -132,10 +149,13 @@ class DragButton(QtWidgets.QPushButton):
             drag = QtGui.QDrag(self)
             mime = QtCore.QMimeData()
             drag.setMimeData(mime)
+
             pixmap = QtGui.QPixmap(self.size())
             self.render(pixmap)
             drag.setPixmap(pixmap)
+
             drag.exec_(Qt.MoveAction)
+
 def filter(list):
     """ Filter through selected backdrops for the largest. """
     backdrop_dict = {}
@@ -147,6 +167,7 @@ def filter(list):
             area.append(a)
     area.sort()
     return(area, backdrop_dict)
+
 def snap():    
     """ Snap backdrops to the selected nodes. """
     settings = Overrides()        
@@ -179,31 +200,43 @@ def snap():
             this.knob('bdheight').setValue(bdH-bdY)  
             this.knob('ypos').setValue(bdY)
             nuke.Undo.end() 
+
 class KeySequenceWidget(QtWidgets.QWidget):
+
     keySequenceChanged = QtCore.Signal()
+
     def __init__(self, parent=None):
         QtWidgets.QWidget.__init__(self, parent)
+
         self.setMinimumWidth(140)
+
         layout = QtWidgets.QHBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(2)
         self.setLayout(layout)
+
         self.button = KeySequenceButton(self)
         self.button.setFixedWidth(100)
         self.clearButton = QtWidgets.QPushButton(self, iconSize=QtCore.QSize(16, 16))
         self.clearButton.setText("Clear")
         self.clearButton.setFixedWidth(50)
+
         layout.addWidget(self.button)
         layout.addWidget(self.clearButton)
+
         self.clearButton.clicked.connect(self.clear)
+
         self.button.setToolTip("Sets the key sequence used to make a backdrops. Click to start recording.")
         self.clearButton.setToolTip("Clear the key sequence.")
+
     def setShortcut(self, shortcut):
         """Sets the initial shortcut to display."""
         self.button.setKeySequence(shortcut)
+
     def shortcut(self):
         """Returns the currently set key sequence."""
         return self.button.keySequence()
+
     def clear(self):
         """Empties the displayed shortcut."""
         if self.button.isRecording():
@@ -211,12 +244,17 @@ class KeySequenceWidget(QtWidgets.QWidget):
         if not self.button.keySequence().isEmpty():
             self.button.setKeySequence(QtGui.QKeySequence())
             self.keySequenceChanged.emit()
+
     def setModifierlessAllowed(self, allow):
         self.button._modifierlessAllowed = allow
+
     def isModifierlessAllowed(self):
         return self.button._modifierlessAllowed
+
 class KeySequenceButton(QtWidgets.QPushButton):
+
     MAX_NUM_KEYSTROKES = 1
+
     def __init__(self, parent=None):
         QtWidgets.QPushButton.__init__(self, parent)
         self._modifierlessAllowed = True  # True allows "b" as a shortcut, False requires shift/alt/ctrl/etc
@@ -226,9 +264,11 @@ class KeySequenceButton(QtWidgets.QPushButton):
         self._isrecording = False
         self.clicked.connect(self.startRecording)
         self._timer.timeout.connect(self.doneRecording)
+
     def setKeySequence(self, seq):
         self._seq = seq
         self.updateDisplay()
+
     def keySequence(self):
         if self._isrecording:
             self.doneRecording()
@@ -246,8 +286,10 @@ class KeySequenceButton(QtWidgets.QPushButton):
         else:
             s = self._seq.toString(QtGui.QKeySequence.NativeText).replace('&', '&&')
         self.setText(s)
+
     def isRecording(self):
         return self._isrecording
+
     def event(self, ev):
         if self._isrecording:
             # prevent Qt from special casing Tab and Backtab
@@ -255,14 +297,18 @@ class KeySequenceButton(QtWidgets.QPushButton):
                 self.keyPressEvent(ev)
                 return True
         return QtWidgets.QPushButton.event(self, ev)
+
     def keyPressEvent(self, ev):
         if not self._isrecording:
             return QtWidgets.QPushButton.keyPressEvent(self, ev)
         if ev.isAutoRepeat():
             return
         modifiers = ev.modifiers()
+
         ev.accept()
+
         all_modifiers = (-1, Qt.Key_Shift, Qt.Key_Control, Qt.Key_AltGr, Qt.Key_Alt, Qt.Key_Meta, Qt.Key_Menu)
+
         key = ev.key()
         # check if key is a modifier or a character key without modifier (and if that is allowed)
         if (
@@ -276,42 +322,52 @@ class KeySequenceButton(QtWidgets.QPushButton):
                  or (modifiers & Qt.SHIFT
                      and key in (Qt.Key_Return, Qt.Key_Space, Qt.Key_Tab, Qt.Key_Backtab,
                                  Qt.Key_Backspace, Qt.Key_Delete, Qt.Key_Escape)))):
+
             # change Shift+Backtab into Shift+Tab
             if key == Qt.Key_Backtab and modifiers & Qt.SHIFT:
                 key = Qt.Key_Tab | modifiers
+
             # remove the Shift modifier if it doen't make sense..
             elif (Qt.Key_Exclam <= key <= Qt.Key_At
                   # ... e.g ctrl+shift+! is impossible on, some,
                   # keyboards (because ! is shift+1)
                   or Qt.Key_Z < key <= 0x0ff):
                 key = key | (modifiers & ~int(Qt.SHIFT))
+
             else:
                 key = key | modifiers
+
             # append max number of keystrokes
             if self._recseq.count() < self.MAX_NUM_KEYSTROKES:
                 l = list(self._recseq)
                 l.append(key)
                 self._recseq = QtGui.QKeySequence(*l)
+
         self._modifiers = modifiers
         self.controlTimer()
         self.updateDisplay()
+
     def keyReleaseEvent(self, ev):
         if not self._isrecording:
             return QtWidgets.QPushButton.keyReleaseEvent(self, ev)
         modifiers = int(ev.modifiers() & (Qt.SHIFT | Qt.CTRL | Qt.ALT | Qt.META))
         ev.accept()
+
         self._modifiers = modifiers
         self.controlTimer()
         self.updateDisplay()
+
     def hideEvent(self, ev):
         if self._isrecording:
             self.cancelRecording()
         QtWidgets.QPushButton.hideEvent(self, ev)
+
     def controlTimer(self):
         if self._modifiers or self._recseq.isEmpty():
             self._timer.stop()
         else:
             self._timer.start(600)
+
     def startRecording(self):
         self.setDown(True)
         self.setStyleSheet("text-align: left;")
@@ -320,11 +376,13 @@ class KeySequenceButton(QtWidgets.QPushButton):
         self._modifiers = int(QtWidgets.QApplication.keyboardModifiers() & (Qt.SHIFT | Qt.CTRL | Qt.ALT | Qt.META))
         self.grabKeyboard()
         self.updateDisplay()
+
     def doneRecording(self):
         self._seq = self._recseq
         self.cancelRecording()
         self.clearFocus()
         self.parentWidget().keySequenceChanged.emit()
+
     def cancelRecording(self):
         if not self._isrecording:
             return
@@ -333,6 +391,7 @@ class KeySequenceButton(QtWidgets.QPushButton):
         self._isrecording = False
         self.releaseKeyboard()
         self.updateDisplay()
+
 # Settings JSON file
 def _load_yaml(path):
     def _load_internal():
@@ -344,6 +403,7 @@ def _load_yaml(path):
         overrides = json.load(f)
         f.close()
         return overrides
+
     # Catch any errors, print traceback and continue
     try:
         return _load_internal()
@@ -351,7 +411,9 @@ def _load_yaml(path):
         print("Error loading %r" % path)
         import traceback
         traceback.print_exc()
+
         return None
+
 def _save_yaml(obj, path):
     def _save_internal():
         import json
@@ -362,10 +424,12 @@ def _save_yaml(obj, path):
             except OSError as e:
                 if e.errno != 17:  # errno 17 is "already exists"
                     raise
+
         f = open(path, "w")
         json.dump(obj, fp=f, sort_keys=True, indent=1, separators=(',', ': '))
         f.write("\n")
         f.close()
+
     # Catch any errors, print traceback and continue
     try:
         _save_internal()
@@ -373,17 +437,20 @@ def _save_yaml(obj, path):
         print("Error saving BackdropManager settings")
         import traceback
         traceback.print_exc()
+
 class Overrides(object):
     def __init__(self):
         self.settings_path = os.path.expanduser("~/.nuke/BackdropManager/backdropmanager_settings.json")
+
     def save(self):
         settings = {
             'settings': self.defaults,
-            'version': 2,
+            'version': 3,
                     }
         _save_yaml(obj=settings, path=self.settings_path)
        
         nuke_setup()
+
     def clear(self):
         # Default
         self.defaults = {
@@ -403,10 +470,12 @@ class Overrides(object):
             'align': 'center'
                         }
         self.save()
+
     def restore(self):
         """Load the settings from disc, and update Nuke
         """
         settings = _load_yaml(path=self.settings_path)
+
         self.defaults = {
             'colors': [(0.26, 0.26, 0.26), (0.32, 0.255, 0.19), (0.32, 0.19, 0.19), (0.32, 0.19, 0.255), (0.255, 0.19, 0.32), (0.19, 0.19, 0.32), (0.19, 0.255, 0.32), (0.19, 0.32, 0.19)],
             'labels': ["", "", "", "", "", "", "", ""],
@@ -423,36 +492,45 @@ class Overrides(object):
             'italic': False,
             'align': 'center'
                         }
+
         if settings is None:
             self.clear()
             return self.defaults
+
         elif int(settings['version']) >= 2:
             self.defaults = settings['settings']
             return self.defaults
+
         else:
-            nuke.warning("Wrong version of backdrop manager config, nothing loaded (version %s loaded, version 2 expected), path was %r. Please either delete your settings file or re-download the latest BackdropManager." % (
+            nuke.warning("Wrong version of backdrop manager config, nothing loaded (version %s loaded, version 3 is the latest), path was %r. Please either delete your settings file or re-download the latest BackdropManager." % (
                 int(settings['version']),
                 self.settings_path))
             return
+
     def load(self):
         settings = {
             'settings': self.defaults,
-            'version': 2,
+            'version': 3,
                     }
         return settings
+
 class BackdropManagerSettings(QtWidgets.QDialog):
     closed = QtCore.Signal()
+
     def __init__(self):
         QtWidgets.QDialog.__init__(self)        
         
         self.setAcceptDrops(True)
+
         # Load settings from disc, and into Nuke
         self.settings = Overrides()
         d = self.settings.restore()
+
         # Window setup
         self.setWindowTitle("Backdrop Manager Settings")
         self.setMinimumSize(470, 700)
         self.setWhatsThis("This sets the default values for backdrop settings. Values can be changed when making a backdrop. Add or change color boxes to set presets for backdrop colors.")
+
         # Try moving to last opened position
         try:
             self.move(d['xpos'], d['ypos'])
@@ -469,12 +547,15 @@ class BackdropManagerSettings(QtWidgets.QDialog):
         set_layout.setSpacing(10)
         set_layout.setContentsMargins(10,10,10,10)
         set_group.setLayout(set_layout)
+
         self.layout.addWidget(set_group, 1)
+
         # Shortcut box
         box = QtWidgets.QHBoxLayout()
         box.setContentsMargins(20,0,0,0)
         box.setSpacing(0)
         set_layout.addLayout(box)
+
          # Shortcut
         self.ks = QtGui.QKeySequence(d['shortcut'])
         self.shortcut_widget = KeySequenceWidget()
@@ -499,6 +580,7 @@ class BackdropManagerSettings(QtWidgets.QDialog):
         
         # Padding
         self.p = d['padding']
+
         self.psize = QtWidgets.QSpinBox(self)
         self.psize.setToolTip("Set default snap padding size.")
         self.psize.setFixedSize(80,24)
@@ -508,6 +590,7 @@ class BackdropManagerSettings(QtWidgets.QDialog):
         box7.addWidget(_widget_with_label(self.psize, "padding"))        
         
         box7.addStretch(1)        
+
         # Font box
         box2 = QtWidgets.QHBoxLayout()
         box2.setContentsMargins(45,0,0,0)
@@ -516,14 +599,18 @@ class BackdropManagerSettings(QtWidgets.QDialog):
         
         label = QtWidgets.QLabel("font")
         box2.addWidget(label)
+
         # Font
         self.f = d['font']
+
         self.font = QtWidgets.QFontComboBox()
         self.font.setToolTip("Set default label font.")
         setCurrentText(self.font, self.f)
         box2.addWidget(self.font)
+
         # Font size
         self.fs = d['font_size']
+
         self.fsize = QtWidgets.QSpinBox(self)
         self.fsize.setToolTip("Set default label font size.")
         self.fsize.setFixedSize(80,24)
@@ -566,6 +653,7 @@ class BackdropManagerSettings(QtWidgets.QDialog):
         
        # Format dropdown
         self.f = d['align']
+
         self.format = QtWidgets.QComboBox()
         self.format.addItem('left')
         self.format.addItem('center')
@@ -606,25 +694,31 @@ class BackdropManagerSettings(QtWidgets.QDialog):
             box4.addWidget(_widget_with_label(self.w, "width"))
             
             box4.addStretch(1)
+
         # Box for bookmark
         box5 = QtWidgets.QHBoxLayout()
         box5.setContentsMargins(73,0,0,0)
         box5.setSpacing(0)
         set_layout.addLayout(box5)
+
         # Checkbox
         self.bval = d['bookmark']
+
         self.bm = QtWidgets.QCheckBox("bookmark")
         self.bm.setToolTip("Set default bookmark value.")
         self.bm.setChecked(self.bval)
         self.bm.stateChanged.connect(self.updateB)
         box5.addWidget(self.bm)
+
         # Box for Z
         box6 = QtWidgets.QHBoxLayout()
         box6.setContentsMargins(23,0,260,0)
         box6.setSpacing(0)
         set_layout.addLayout(box6)
+
         # Z order
         self.zval = d['zorder']
+
         self.zorder = QtWidgets.QSpinBox(self)
         self.zorder.setToolTip("Set default Z order value.")
         self.zorder.setFixedSize(80,24)
@@ -634,6 +728,7 @@ class BackdropManagerSettings(QtWidgets.QDialog):
         box6.addWidget(_widget_with_label(self.zorder, "Z Order"))
         
         box6.addStretch(1)
+
         # Box group
         box_group = QtWidgets.QGroupBox("Color Presets")
         box_group.setContentsMargins(0,25,0,0)
@@ -643,7 +738,9 @@ class BackdropManagerSettings(QtWidgets.QDialog):
         self.box_layout.setSpacing(15)
         vbox.addLayout(self.box_layout)
         box_group.setLayout(vbox)
+
         self.layout.addWidget(box_group, 2)   
+
         # Get colors from file
         self.colors = d['colors']
         
@@ -656,6 +753,7 @@ class BackdropManagerSettings(QtWidgets.QDialog):
                 self.labels.append("")
                 d['labels'] = self.labels
                 self.settings.save()
+
         self.c = 0
         self.row = 0
         
@@ -698,6 +796,7 @@ class BackdropManagerSettings(QtWidgets.QDialog):
         pcol = p['UIBackColor'].value()
         pcol = interface2rgb(pcol)
         pcol = rgb2hex(pcol)        
+
         # Make minus button (TO DO: Add functionality to select box to remove)
         minb = QtWidgets.QPushButton("-")
         minb.setToolTip("Remove last color box.")
@@ -705,6 +804,7 @@ class BackdropManagerSettings(QtWidgets.QDialog):
         minb.setFixedSize(20,20)
         minb.clicked.connect(self.min)
         pmbox.addWidget(minb)
+
         # Make plus button
         addb = QtWidgets.QPushButton("+")
         addb.setToolTip("Add a new color box.")
@@ -712,16 +812,19 @@ class BackdropManagerSettings(QtWidgets.QDialog):
         addb.clicked.connect(self.add) 
         addb.setFixedSize(20,20)        
         pmbox.addWidget(addb)
+
         # Button box
         box7 = QtWidgets.QHBoxLayout()
         box7.setSpacing(60)
         self.layout.addLayout(box7)
+
         # Reset panel button
         button_default = QtWidgets.QPushButton("Set to default")
         button_default.setToolTip("Set ALL values back to default, including colors.")
         button_default.clicked.connect(self.default)
         box7.addWidget(button_default)
         self.button_default = button_default
+
         # Close panel button
         button_close = QtWidgets.QPushButton("Save")
         button_close.setToolTip("Save settings.")
@@ -753,6 +856,7 @@ class BackdropManagerSettings(QtWidgets.QDialog):
         self.row -= 1
         
         self.box_layout.update()
+
     def add(self):
         """Add a new box"""
         col = nuke.getColor()
@@ -775,12 +879,15 @@ class BackdropManagerSettings(QtWidgets.QDialog):
             self.titles.append(title)
             self.labels.append("")
             title.setToolTip("Enter default label.")
+
             self.row += 1
             self.box_layout.addWidget(btn, self.row -1, 0)
             self.box_layout.addWidget(title, self.row -1, 1)
             
             self.box_layout.update()
+
             btn.clicked.connect(partial(self.btnClicked, idx, btn))
+
     def updateFS(self):
         """Saves font size"""
         val = self.fsize.value()
@@ -866,6 +973,7 @@ class BackdropManagerSettings(QtWidgets.QDialog):
         mb.setStandardButtons(QtWidgets.QMessageBox.Reset | QtWidgets.QMessageBox.Cancel)
         mb.setDefaultButton(QtWidgets.QMessageBox.Cancel)
         ret = mb.exec_()
+
         if ret == QtWidgets.QMessageBox.Reset:
             self.settings.clear()
             self.close()
@@ -909,11 +1017,13 @@ def load_settings():
     s.restore()
    
 _sew_instance = None
+
 def gui():
    
     load_settings()
    
     global _sew_instance
+
     if _sew_instance is not None:
         # Already an instance (make it really obvious - focused, in front and under cursor, like other Nuke GUI windows)
         _sew_instance.show()
@@ -921,12 +1031,16 @@ def gui():
         _sew_instance.activateWindow()
         _sew_instance.raise_()
         return
+
     # Make a new instance, keeping it in a global variable to avoid multiple instances being opened
     _sew_instance = BackdropManagerSettings()
+
     def when_closed():
         global _sew_instance
         _sew_instance = None
+
     _sew_instance.closed.connect(when_closed)
+
     modal = False
     if modal:
         _sew_instance.exec_()
@@ -934,26 +1048,34 @@ def gui():
         _sew_instance.show()
        
 """ Start shortcut UI """
+
 class BackdropManagerUI(QtWidgets.QDialog):
     closed = QtCore.Signal()
+
     def __init__(self, parent=None):
         QtWidgets.QDialog.__init__(self)
+
         # Get settings data
         o = Overrides()
         self.data = o.restore()
+
         # Window setup
         self.setWindowTitle("Make backdrop")
         self.setMinimumSize(450, 300)
+
         self.setFocus()
+
         # Stack widgets atop each other
         layout = QtWidgets.QVBoxLayout()
         layout.setSpacing(25)
         self.setLayout(layout)
+
         # Settings box
         set_group = QtWidgets.QGroupBox("Backdrop")
         set_layout = QtWidgets.QVBoxLayout()
         set_layout.setSpacing(10)
         set_group.setLayout(set_layout)
+
         layout.addWidget(set_group)
        
         # Color box
@@ -961,11 +1083,20 @@ class BackdropManagerUI(QtWidgets.QDialog):
         box.setContentsMargins(40,0,0,0)
         box.setSpacing(0)
         set_layout.addLayout(box)    
+
         # Color dropdown        
         self.colBox = QtWidgets.QComboBox()
         self.colBox.setFixedSize(100,25)
         self.colors = self.data['colors']
-        self.labels = self.data['labels']
+        
+        try:
+            self.labels = self.data['labels']
+        except:
+            self.labels = []
+            for c in self.colors:
+                self.labels.append("")
+                self.data['labels'] = self.labels
+                o.save()
         
         try:
             baseCol = rgb2hex(self.colors[0])
@@ -983,6 +1114,7 @@ class BackdropManagerUI(QtWidgets.QDialog):
             self.colBox.addItem(label)
             model.setData(model.index(row, 0), QtGui.QColor(rgb2hex(color)), QtCore.Qt.BackgroundRole)
         box.addWidget(_widget_with_label(self.colBox, "color"))
+
         self.colBox.activated.connect(self.changeColor)
         
         box.addStretch(1)
@@ -1191,6 +1323,7 @@ class BackdropManagerUI(QtWidgets.QDialog):
             i = "<i>"
         else:
             i = ""
+
         selectedNodes = nuke.selectedNodes()
        
         # Get grid size
@@ -1234,12 +1367,14 @@ class BackdropManagerUI(QtWidgets.QDialog):
                n['border_width'].setValue(self.w.value())
                 
         # Add button to snap to selected
-        tab = nuke.Tab_Knob('backdrop_settings', 'Backdrop Settings')
-        n.addKnob(tab)
         k = n.knob('label')
         n.addKnob(k)
         k = n.knob('z_order')
         n.addKnob(k)
+        for knob in n.knobs():
+            if n.knob(knob).name() == "User":
+                knob.setName("Backdrop Settings")
+                knob.setLabel("backdrop_settings")
         
         nuke.Undo.end()
         
@@ -1261,6 +1396,7 @@ class BackdropManagerUI(QtWidgets.QDialog):
                     button.setValue("this = nuke.thisNode()\nselNodes = nuke.selectedNodes()\npadding = this.knob('padding').value()\nif len(selNodes)== 0:\n\tpass\nelse:\n\tbdX = min([node.xpos() for node in selNodes]) - padding\n\tbdY = min([node.ypos() for node in selNodes]) - padding - 60\n\tbdW = max([node.xpos() + node.screenWidth() for node in selNodes]) + padding\n\tbdH = max([node.ypos() + node.screenHeight() for node in selNodes]) + padding\n\tthis.knob('xpos').setValue(bdX)\n\tthis.knob('ypos').setValue(bdY)\n\tthis.knob('bdwidth').setValue(bdW-bdX)\n\tthis.knob('bdheight').setValue(bdH-bdY)")
                     n.addKnob(button)
         except: pass
+
     def enableL(self):
         """Enables/disables the label button"""
         if self.labelt.isChecked():
@@ -1283,6 +1419,7 @@ class BackdropManagerUI(QtWidgets.QDialog):
         f = "<" + self.format.currentText() + ">"
         color = self.colBox.currentText()
         color = hex2interface(color)
+
         if self.boldv == True:
             b = "<b>"
         else:
@@ -1317,9 +1454,7 @@ class BackdropManagerUI(QtWidgets.QDialog):
         dag_node = None
         if active_dag:
             node = get_dag_node(active_dag)
-        try:
-            if node:
-                node.begin()
+            with node:
                 sel = nuke.selectedNodes()
                 for n in sel:
                     n.setSelected(False)
@@ -1332,69 +1467,68 @@ class BackdropManagerUI(QtWidgets.QDialog):
                         n = nuke.selectedNode()
                         lbl = n['label'].value()
                         col = n['tile_color'].value()
-        finally:
-            if node:
-                node.end()
-                nuke.thisGroup().begin()
                    
-        self.setWindowTitle("Edit backdrop")
-        self.buttonBox.accepted.disconnect()
-        self.buttonBox.accepted.connect(self.editBackdrop)
+                self.setWindowTitle("Edit backdrop")
+                self.buttonBox.accepted.disconnect()
+                self.buttonBox.accepted.connect(self.editBackdrop)
+                
+                if sel_l > 1:                
+                    self.labelt.setVisible(True)
+                    self.box6.setContentsMargins(16,0,0,0)  
+                    self.zt.setVisible(True)
+                    self.box5.setContentsMargins(0,0,0,0)  
+                    
+                elif sel_l == 1:
+                    if "<center>" in lbl:
+                        setCurrentText(self.format, "center")
+                    else:
+                        setCurrentText(self.format, "left")
+                        
+                    if "<b>" in lbl:
+                        self.boldv = True
+                        self.boldb.setStyleSheet("font: bold; background-color: #787878;")
+                    else:
+                        self.boldv = False
+                        self.boldb.setStyleSheet("font: bold; background-color: ;")
+                        
+                    if "<i>" in lbl:
+                        self.italicv = True
+                        self.italicb.setStyleSheet("font: italic; background-color: #787878;")
+                    else:
+                        self.italicv = False
+                        self.italicb.setStyleSheet("font: italic; background-color: ;")                
+                        
+                    col = interface2rgb(col)
+                    col = rgb2hex(col)
         
-        if sel_l > 1:                
-            self.labelt.setVisible(True)
-            self.box6.setContentsMargins(16,0,0,0)  
-            self.zt.setVisible(True)
-            self.box5.setContentsMargins(0,0,0,0)  
-            
-        elif sel_l == 1:
-            if "<center>" in lbl:
-                setCurrentText(self.format, "center")
-            else:
-                setCurrentText(self.format, "left")
-                
-            if "<b>" in lbl:
-                self.boldv = True
-                self.boldb.setStyleSheet("font: bold; background-color: #787878;")
-            else:
-                self.boldv = False
-                self.boldb.setStyleSheet("font: bold; background-color: ;")
-                
-            if "<i>" in lbl:
-                self.italicv = True
-                self.italicb.setStyleSheet("font: italic; background-color: #787878;")
-            else:
-                self.italicv = False
-                self.italicb.setStyleSheet("font: italic; background-color: ;")                
-                
-            col = interface2rgb(col)
-            col = rgb2hex(col)
-            lbl = lbl.split(">")[-1]
-            
-            if self.colBox.findText(col) == -1:
-                self.colBox.addItem(col)
-                model = self.colBox.model()
-                row = len(self.data['colors'])
-                model.setData(model.index(row, 0), QtGui.QColor(col), QtCore.Qt.BackgroundRole)
-                
-            setCurrentText(self.colBox, col)
-            self.colBox.setStyleSheet("background-color: %s;" % col)
-            self.label.setText(lbl)
-            self.zorder.setValue(n['z_order'].value())
-            setCurrentText(self.style_drop, n['appearance'].value())
-            self.w.setValue(n['border_width'].value())
-            self.bm.setChecked(n['bookmark'].value())
-            setCurrentText(self.font, n['note_font'].value())
-            self.fsize.setValue(n['note_font_size'].value())
-        else:
-            self.zorder.setValue(self.data['zorder'])
+                    lbl = lbl.split(">")[-1]
+                    
+                    if self.colBox.findText(col) == -1:
+                        self.colBox.addItem(col)
+                        model = self.colBox.model()
+                        row = len(self.data['colors'])
+                        model.setData(model.index(row, 0), QtGui.QColor(col), QtCore.Qt.BackgroundRole)
+                        
+                    setCurrentText(self.colBox, col)
+                    self.colBox.setStyleSheet("background-color: %s;" % col)
+                    self.label.setText(lbl)
+                    self.zorder.setValue(n['z_order'].value())
+                    setCurrentText(self.style_drop, n['appearance'].value())
+                    self.w.setValue(n['border_width'].value())
+                    self.bm.setChecked(n['bookmark'].value())
+                    setCurrentText(self.font, n['note_font'].value())
+                    self.fsize.setValue(n['note_font_size'].value())
+                else:
+                    self.zorder.setValue(self.data['zorder'])
         
 _sew_instanceUI = None
    
 def guiUI():
+
     load_settings()
    
     global _sew_instanceUI
+
     if _sew_instanceUI is not None:
         # Already an instance (make it really obvious - focused, in front and under cursor, like other Nuke GUI windows)
         _sew_instanceUI.show()
@@ -1404,10 +1538,13 @@ def guiUI():
    
     # Make a new instance, keeping it in a global variable to avoid multiple instances being opened
     _sew_instanceUI = BackdropManagerUI()
+
     def when_closedUI():
         global _sew_instanceUI
         _sew_instanceUI = None
+
     _sew_instanceUI.closed.connect(when_closedUI)
+
     modal = False
     if modal:
         _sew_instanceUI.exec_()
@@ -1425,6 +1562,7 @@ class BackdropPanel(QtWidgets.QDialog):
         # Load settings from disc, and into Nuke
         self.settings = Overrides()
         self.d = self.settings.restore()
+
         # Stack widgets atop each other
         self.layout = QtWidgets.QVBoxLayout()
         self.layout.setContentsMargins(0,0,0,0)
@@ -1502,6 +1640,7 @@ class BackdropPanel(QtWidgets.QDialog):
                 self.colors.append(w.data)
             except: pass
         d['colors'] = self.colors
+
         self.settings.save()
         
     def dragEnterEvent(self, e):
@@ -1512,16 +1651,19 @@ class BackdropPanel(QtWidgets.QDialog):
         """Rearrange box widgets on drop"""
         pos = e.pos()
         widget = e.source()
+
         for n in range(self.box_layout.count()):
             # Get the widget at each index in turn.
             w = self.box_layout.itemAt(n).widget()
             drop_here = pos.x() <= w.x() + w.size().width() // 2
+
             if drop_here:
                 # We didn't drag past this widget.
                 # insert to the left of it.
                 self.box_layout.insertWidget(n-1, widget)
                 self.get_data()
                 break
+
         e.accept()          
         
     def setStyleSel(self):
@@ -1589,12 +1731,14 @@ class BackdropPanel(QtWidgets.QDialog):
         self.box_layout.setSpacing(15)
         vbox.addLayout(self.box_layout)
         self.box_group.setLayout(vbox)
+
         self.layout.addWidget(self.box_group)
             
         # Get colors from file
         self.settings = Overrides()
         d = self.settings.restore()        
         self.colors = d['colors']
+
         # Make boxes
         for idx, color in enumerate(self.colors):
             btn = DragButton()
@@ -1640,7 +1784,9 @@ class BackdropPanel(QtWidgets.QDialog):
             self.colors.pop(idx)
         except: pass
         self.settings.save()           
+
         self.clear()       
+
     def add(self):
         """Add a new color box"""
         col = nuke.getColor()
@@ -1658,6 +1804,7 @@ class BackdropPanel(QtWidgets.QDialog):
             btn.setStyleSheet("background-color: %s;" % rgb2hex(col))
     
             self.box_layout.addWidget(btn)
+
             btn.clicked.connect(partial(self.setColor, idx))
         
     def clear(self):
@@ -1670,6 +1817,7 @@ class BackdropPanel(QtWidgets.QDialog):
         # Get Selected Nodes
         color = self.colors[color_idx]
         color = int('%02x%02x%2x%02x' % (int(color[0]*255), int(color[1]*255), int(color[2]*255),1),16)
+
         for n in nuke.selectedNodes():
             n.setSelected(False)
             if n.Class() == 'StickyNote' or n.Class() == 'BackdropNode':
@@ -1684,6 +1832,7 @@ class BackdropPanel(QtWidgets.QDialog):
             n.setSelected(False)
             if n.Class() == 'BackdropNode':
                n.setSelected(True)
+
         for n in nuke.selectedNodes():
             if n['appearance'].value() == 'Fill':
                 n.knob('appearance').setValue('Border')
@@ -1693,14 +1842,17 @@ class BackdropPanel(QtWidgets.QDialog):
     def updateValue(self):
         ## Nuke "updateValue" fix        
         pass                  
+
 _sew_instanceEdit = None   
            
 def guiEdit():
+
     load_settings()
    
     global _sew_instanceEdit
    
     # Make a new instance, keeping it in a global variable to avoid multiple instances being opened
+
     if _sew_instanceEdit is not None:
         # Already an instance (make it really obvious - focused, in front and under cursor, like other Nuke GUI windows)
         _sew_instanceEdit.show()
@@ -1734,6 +1886,7 @@ def nuke_setup():
     # Load settings
     settings = Overrides()
     d = settings.restore()
+
     # Menu item to open shortcut editor
     nuke.menu("Nuke").addCommand("Edit/Backdrop Manager Settings", gui)
     nuke.menu("Node Graph").addCommand("Create Backdrop", guiUI, d['shortcut'])
@@ -1741,5 +1894,6 @@ def nuke_setup():
     panels.registerWidgetAsPanel('nuke.BP', 'Backdrop Manager', 'BackdropPanel')
     
     nuke.BP = BackdropPanel
+
 if __name__ == "__main__":
     nuke_setup()
