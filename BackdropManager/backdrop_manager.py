@@ -38,9 +38,7 @@ DAG_OBJECT_NAME = "DAG"
 
 # Get DAG
 def get_dag_widgets(visible=True):
-    """
-    Gets all Qt objects with DAG in the object name. Thanks to Erwan Leroy.
-    """
+    """ Gets all Qt objects with DAG in the object name. Thanks to Erwan Leroy. """
     dags = []
     all_widgets = QtWidgets.QApplication.instance().allWidgets()
     for widget in all_widgets:
@@ -50,10 +48,8 @@ def get_dag_widgets(visible=True):
     return dags
 
 def get_current_dag():
-    """
-    Returns:
-        QtWidgets.QWidget: The currently active DAG
-    """
+    """ Returns:
+        QtWidgets.QWidget: The currently active DAG """
     visible_dags = get_dag_widgets(visible=True)
     for dag in visible_dags:
         if dag.hasFocus():
@@ -69,32 +65,30 @@ def get_dag_node(dag_widget):
     title = str(dag_widget.windowTitle())
     if DAG_TITLE not in title:
         return None
-    if title == DAG_TITLE:
+    if dag_widget.objectName() == DAG_OBJECT_NAME:
         return nuke.root()
     return nuke.toNode(title.replace(" " + DAG_TITLE, ""))
     
 def wrapped(func):
-    """ Executes the function argument in the currently active DAG. """
+    """ Executes the function in the currently active DAG. """
     def wrapper(*args, **kwargs):
         active_dag = get_current_dag()
         dag_node = None
         if active_dag:
             node = get_dag_node(active_dag)
+            if node is None:
+                node = nuke.root()
             with node:
                result = func(*args, **kwargs)
                return result
     return wrapper
 
 def interface2rgb(hexValue, normalize = True):
-    '''
-    Convert a color stored as a 32 bit value as used by nuke for interface colors to normalized rgb values.
-    '''
+    """ Convert a color stored as a 32 bit value as used by nuke for interface colors to normalized rgb values. """
     return [(0xFF & hexValue >>  i) / 255.0 for i in [24,16,8]]
 
 def rgb2hex(rgbaValues):
-    '''
-    Convert a color stored as normalized rgb values to a hex.
-    '''
+    """Convert a color stored as normalized rgb values to a hex. """
     rgbaValues = [int(i * 255) for i in rgbaValues]
 
     if len(rgbaValues) < 3:
@@ -103,27 +97,21 @@ def rgb2hex(rgbaValues):
     return '#%02x%02x%02x' % (rgbaValues[0],rgbaValues[1],rgbaValues[2])
 
 def hex2rgb(hexColor):
-    '''
-    Convert a color stored as hex to rgb values.
-    '''
+    """ Convert a color stored as hex to rgb values. """
     hexColor = hexColor.lstrip('#')
     return tuple(int(hexColor[i:i+2], 16) for i in (0, 2 ,4))    
     
 def hex2interface(hexColor):
-    '''
-    Convert a color stored as hex to a 32 bit value as used by nuke for interface colors.
-    '''    
+    """ Convert a color stored as hex to a 32 bit value as used by nuke for interface colors. """   
     hexColor = hexColor.lstrip('#')
     return int(hexColor+'00', 16)    
 
 def rgb2interface(rgb):
-    '''
-    Convert a color stored as rgb values to a 32 bit value as used by nuke for interface colors.
-    '''
+    """ Convert a color stored as rgb values to a 32 bit value as used by nuke for interface colors. """
     return int('%02x%02x%2x%02x' % (int(rgb[0]*255), int(rgb[1]*255), int(rgb[2]*255),1),16)
 
 def _widget_with_label(towrap, text):
-    """Wraps the given widget in a layout, with a label to the left"""
+    """ Wraps the given widget in a layout, with a label to the left """
     w = QtWidgets.QWidget()
     layout = QtWidgets.QHBoxLayout()
     layout.setSpacing(5)
@@ -135,7 +123,7 @@ def _widget_with_label(towrap, text):
     return w     
     
 def setCurrentText(widget, text):
-    """ Change setCurrentText to a function to work with Nuke10"""
+    """ Change setCurrentText to a function to work with Nuke10 """
     index = widget.findText(text, QtCore.Qt.MatchFixedString)
     if index >= 0:
         widget.setCurrentIndex(index)            
@@ -186,7 +174,7 @@ def snap():
             return
             
         else:
-            nuke.Undo.begin()
+            #nuke.Undo.begin()
             largest = [k for k, v in b.items() if v == a[-1]][0]
             selNodes.remove(largest)
             this = largest
@@ -199,7 +187,7 @@ def snap():
             this.knob('xpos').setValue(bdX)                
             this.knob('bdheight').setValue(bdH-bdY)  
             this.knob('ypos').setValue(bdY)
-            nuke.Undo.end() 
+            #nuke.Undo.end() 
 
 class KeySequenceWidget(QtWidgets.QWidget):
 
@@ -230,15 +218,15 @@ class KeySequenceWidget(QtWidgets.QWidget):
         self.clearButton.setToolTip("Clear the key sequence.")
 
     def setShortcut(self, shortcut):
-        """Sets the initial shortcut to display."""
+        """ Sets the initial shortcut to display. """
         self.button.setKeySequence(shortcut)
 
     def shortcut(self):
-        """Returns the currently set key sequence."""
+        """ Returns the currently set key sequence."""
         return self.button.keySequence()
 
     def clear(self):
-        """Empties the displayed shortcut."""
+        """ Empties the displayed shortcut. """
         if self.button.isRecording():
             self.button.cancelRecording()
         if not self.button.keySequence().isEmpty():
@@ -738,9 +726,17 @@ class BackdropManagerSettings(QtWidgets.QDialog):
         self.box_layout.setSpacing(15)
         vbox.addLayout(self.box_layout)
         box_group.setLayout(vbox)
+        
+        self.scroll = QtWidgets.QScrollArea()  
+        
+        #Scroll Area Properties
+        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setWidget(box_group)
 
-        self.layout.addWidget(box_group, 2)   
-
+        self.layout.addWidget(self.scroll, 2)   
+        #self.setCentralWidget(self.scroll)
+        
         # Get colors from file
         self.colors = d['colors']
         
@@ -748,11 +744,7 @@ class BackdropManagerSettings(QtWidgets.QDialog):
         try:
             self.labels = d['labels']
         except:
-            self.labels = []
-            for c in self.colors:
-                self.labels.append("")
-                d['labels'] = self.labels
-                self.settings.save()
+            self.labels = [""]
 
         self.c = 0
         self.row = 0
@@ -760,9 +752,14 @@ class BackdropManagerSettings(QtWidgets.QDialog):
         # Make boxes
         self.boxes = []
         self.titles = []
-        
-        for color, label in zip(self.colors, self.labels):
-            idx = self.colors.index(color)
+
+        for (i, color) in enumerate(self.colors):
+            try:
+                label = d['labels'][i]
+            except:
+                d['labels'].append("")
+                label = ""
+
             btn = DragButton()
             self.boxes.append(btn)
             btn.setToolTip("Click to change color.")
@@ -782,7 +779,7 @@ class BackdropManagerSettings(QtWidgets.QDialog):
             self.box_layout.addWidget(btn, self.row -1, 0)
             self.box_layout.addWidget(title, self.row -1, 1)
     
-            btn.clicked.connect(partial(self.btnClicked, idx, btn))
+            btn.clicked.connect(partial(self.btnClicked, i, btn))
     
         # Make +/- Box
         pmbox = QtWidgets.QHBoxLayout()
@@ -1251,9 +1248,9 @@ class BackdropManagerUI(QtWidgets.QDialog):
         # Z order
         zval = self.data['zorder']
        
-        """Check if trying to make a backdrop around a backdrop, if so, default to z order below"""
+        # Check if trying to make a backdrop around a backdrop, if so, default to z order below
         selected_bd = [n for n in nuke.selectedNodes() if n.Class() == 'BackdropNode']
-        # if there are backdropNodes in our list put the new one immediately behind the farthest one
+        # If there are backdropNodes in our list put the new one immediately behind the farthest one
         if selected_bd:
             zval = min([node['z_order'].value() for node in selected_bd]) - 1        
              
@@ -1315,88 +1312,94 @@ class BackdropManagerUI(QtWidgets.QDialog):
         idx = self.colBox.currentIndex()
         color = self.colors[idx]
         color = rgb2interface(color)
-        if self.boldv == True:
+        if self.boldv:
             b = "<b>"
         else:
             b = ""
-        if self.italicv == True:
+        if self.italicv:
             i = "<i>"
         else:
             i = ""
-
+    
         selectedNodes = nuke.selectedNodes()
-       
+    
         # Get grid size
         gridWidth = nuke.toNode("preferences")['GridWidth'].getValue()
         gridHeight = nuke.toNode("preferences")['GridWidth'].getValue()
-        
-        nuke.Undo.begin()
-        
-        if len(selectedNodes) > 0 :
-            # Calculate bounds for the backdrop node.
-            bdX = min([node.xpos() for node in selectedNodes])
-            bdY = min([node.ypos() for node in selectedNodes])
-            bdW = max([node.xpos() + node.screenWidth() for node in selectedNodes])
-            bdH = max([node.ypos() + node.screenHeight() for node in selectedNodes])
-           
-            # Get max Screen Width
-            maxScreenW = max ([n.screenWidth() for n in selectedNodes])
-           
-            # Adjust Bounds
-            bdX = int(bdX - p)
-            bdY = int(bdY - (p + 60))
-            bdW = int(bdW + p)
-            bdH = int(bdH + p)
-           
-            # Create Backdrop
-            n = nuke.nodes.BackdropNode(xpos = bdX, bdwidth = bdW - bdX, ypos = bdY, bdheight = bdH - bdY, label = f + b + i + txt, z_order = self.zorder.value(), tile_color = color, bookmark = self.bm.isChecked(), note_font = self.font.currentText(), note_font_size = self.fsize.value(), selected = True)
-            if nuke_ver >= 12:     
-               n['appearance'].setValue(self.style_drop.currentText())
-               n['border_width'].setValue(self.w.value())            
-           
-        else:
-            n = nuke.createNode('BackdropNode', inpanel = False)
-            n['label'].setValue(f + b + i + txt)
-            n['z_order'].setValue(self.zorder.value())
-            n['tile_color'].setValue(color)
-            n['bookmark'].setValue(self.bm.isChecked())
-            n['note_font'].setValue(self.font.currentText())
-            n['note_font_size'].setValue(self.fsize.value())
-            if nuke_ver >= 12:     
-               n['appearance'].setValue(self.style_drop.currentText())
-               n['border_width'].setValue(self.w.value())
-                
-        # Add button to snap to selected
-        k = n.knob('label')
-        n.addKnob(k)
-        k = n.knob('z_order')
-        n.addKnob(k)
-        for knob in n.knobs():
-            if n.knob(knob).name() == "User":
-                knob.setName("Backdrop Settings")
-                knob.setLabel("backdrop_settings")
-        
-        nuke.Undo.end()
-        
+    
+        # Start a new undo block to group the backdrop creation
+        nuke.Undo.begin('Create Backdrop')
+    
         try:
-            for k in n.knobs():
-                if 'padding' in k.name():
-                    nuke.Undo.end()
-                    return
-                else:
-                    padding = nuke.Int_Knob('padding', 'Padding')
-                    n.addKnob(padding)
-                    padding.setValue(p)
-                    
-                if 'snap' in k.name():
-                    nuke.Undo.end()
-                    return
-                else: 
-                    button = nuke.PyScript_Knob('snap','Snap to selected nodes')
-                    button.setValue("this = nuke.thisNode()\nselNodes = nuke.selectedNodes()\npadding = this.knob('padding').value()\nif len(selNodes)== 0:\n\tpass\nelse:\n\tbdX = min([node.xpos() for node in selNodes]) - padding\n\tbdY = min([node.ypos() for node in selNodes]) - padding - 60\n\tbdW = max([node.xpos() + node.screenWidth() for node in selNodes]) + padding\n\tbdH = max([node.ypos() + node.screenHeight() for node in selNodes]) + padding\n\tthis.knob('xpos').setValue(bdX)\n\tthis.knob('ypos').setValue(bdY)\n\tthis.knob('bdwidth').setValue(bdW-bdX)\n\tthis.knob('bdheight').setValue(bdH-bdY)")
-                    n.addKnob(button)
-        except: pass
-
+            if len(selectedNodes) > 0:
+                # Calculate bounds for the backdrop node.
+                bdX = min([node.xpos() for node in selectedNodes])
+                bdY = min([node.ypos() for node in selectedNodes])
+                bdW = max([node.xpos() + node.screenWidth() for node in selectedNodes])
+                bdH = max([node.ypos() + node.screenHeight() for node in selectedNodes])
+    
+                # Get max Screen Width
+                maxScreenW = max([n.screenWidth() for n in selectedNodes])
+    
+                # Adjust Bounds
+                bdX = int(bdX - p)
+                bdY = int(bdY - (p + 60))
+                bdW = int(bdW + p)
+                bdH = int(bdH + p)
+    
+                # Create Backdrop
+                n = nuke.nodes.BackdropNode(xpos=bdX, bdwidth=bdW - bdX, ypos=bdY, bdheight=bdH - bdY, label=f + b + i + txt, z_order=self.zorder.value(), tile_color=color, bookmark=self.bm.isChecked(), note_font=self.font.currentText(), note_font_size=self.fsize.value(), selected=True)
+                if nuke_ver >= 12:     
+                    n['appearance'].setValue(self.style_drop.currentText())
+                    n['border_width'].setValue(self.w.value())            
+    
+            else:
+                n = nuke.createNode('BackdropNode', inpanel=False)
+                n['label'].setValue(f + b + i + txt)
+                n['z_order'].setValue(self.zorder.value())
+                n['tile_color'].setValue(color)
+                n['bookmark'].setValue(self.bm.isChecked())
+                n['note_font'].setValue(self.font.currentText())
+                n['note_font_size'].setValue(self.fsize.value())
+                if nuke_ver >= 12:     
+                    n['appearance'].setValue(self.style_drop.currentText())
+                    n['border_width'].setValue(self.w.value())
+    
+            # Additional knobs
+            k = n.knob('label')
+            n.addKnob(k)
+            k = n.knob('z_order')
+            n.addKnob(k)
+            for knob in n.knobs():
+                if knob == "User":
+                    user = n.knob(knob)
+                    user.setName("Backdrop Settings")
+                    user.setLabel("backdrop_settings")
+                try:
+                    if 'padding' in knob:
+                        pass
+                    else:
+                        padding = nuke.Int_Knob('padding', 'Padding')
+                        n.addKnob(padding)
+                        padding.setValue(p)       
+                    if 'snap' in knob:
+                        pass
+                    else: 
+                        button = nuke.PyScript_Knob('snap', 'Snap to selected nodes')
+                        button.setValue("this = nuke.thisNode()\nselNodes = nuke.selectedNodes()\npadding = this.knob('padding').value()\nif len(selNodes)== 0:\n\tpass\nelse:\n\tbdX = min([node.xpos() for node in selNodes]) - padding\n\tbdY = min([node.ypos() for node in selNodes]) - padding - 60\n\tbdW = max([node.xpos() + node.screenWidth() for node in selNodes]) + padding\n\tbdH = max([node.ypos() + node.screenHeight() for node in selNodes]) + padding\n\tthis.knob('xpos').setValue(bdX)\n\tthis.knob('ypos').setValue(bdY)\n\tthis.knob('bdwidth').setValue(bdW-bdX)\n\tthis.knob('bdheight').setValue(bdH-bdY)")
+                        n.addKnob(button)
+                except:
+                    pass
+    
+        except Exception as e:
+            # In case of any errors, cancel the undo block
+            nuke.Undo.cancel()
+            print("Error creating backdrop: {e}")
+    
+        else:
+            # End the undo block
+            nuke.Undo.end()
+ 
     def enableL(self):
         """Enables/disables the label button"""
         if self.labelt.isChecked():
