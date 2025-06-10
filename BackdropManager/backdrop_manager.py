@@ -1327,7 +1327,7 @@ class BackdropManagerUI(QtWidgets.QDialog):
         gridWidth = nuke.toNode("preferences")['GridWidth'].getValue()
         gridHeight = nuke.toNode("preferences")['GridWidth'].getValue()
     
-        # Start a new undo block to group the backdrop creation
+        # Start a new undo block to group the backdrop creation actions
         nuke.Undo.begin('Create Backdrop')
     
         try:
@@ -1365,41 +1365,43 @@ class BackdropManagerUI(QtWidgets.QDialog):
                     n['appearance'].setValue(self.style_drop.currentText())
                     n['border_width'].setValue(self.w.value())
     
-            # Additional knobs
+            # Additional knob logic...
             k = n.knob('label')
             n.addKnob(k)
             k = n.knob('z_order')
             n.addKnob(k)
-            for knob in n.knobs():
+            existing_knobs = n.knobs()
+            for knob in existing_knobs:
                 if knob == "User":
                     user = n.knob(knob)
-                    user.setName("Backdrop Settings")
-                    user.setLabel("backdrop_settings")
-                try:
-                    if 'padding' in knob:
-                        pass
-                    else:
-                        padding = nuke.Int_Knob('padding', 'Padding')
-                        n.addKnob(padding)
-                        padding.setValue(p)       
-                    if 'snap' in knob:
-                        pass
-                    else: 
-                        button = nuke.PyScript_Knob('snap', 'Snap to selected nodes')
-                        button.setValue("this = nuke.thisNode()\nselNodes = nuke.selectedNodes()\npadding = this.knob('padding').value()\nif len(selNodes)== 0:\n\tpass\nelse:\n\tbdX = min([node.xpos() for node in selNodes]) - padding\n\tbdY = min([node.ypos() for node in selNodes]) - padding - 60\n\tbdW = max([node.xpos() + node.screenWidth() for node in selNodes]) + padding\n\tbdH = max([node.ypos() + node.screenHeight() for node in selNodes]) + padding\n\tthis.knob('xpos').setValue(bdX)\n\tthis.knob('ypos').setValue(bdY)\n\tthis.knob('bdwidth').setValue(bdW-bdX)\n\tthis.knob('bdheight').setValue(bdH-bdY)")
-                        n.addKnob(button)
-                except:
+                    user.setName("backdrop_settings")
+                    user.setLabel("Backdrop Settings")
+            try:
+                if any('padding' in knob for knob in existing_knobs):
                     pass
+                else:
+                    padding = nuke.Int_Knob('padding', 'Padding')
+                    n.addKnob(padding)
+                    padding.setValue(p)       
+                if any('snap' in knob for knob in existing_knobs):
+                    pass
+                else: 
+                    button = nuke.PyScript_Knob('snap', 'Snap to selected nodes')
+                    button.setValue("this = nuke.thisNode()\nselNodes = nuke.selectedNodes()\npadding = this.knob('padding').value()\nif len(selNodes)== 0:\n\tpass\nelse:\n\tbdX = min([node.xpos() for node in selNodes]) - padding\n\tbdY = min([node.ypos() for node in selNodes]) - padding - 60\n\tbdW = max([node.xpos() + node.screenWidth() for node in selNodes]) + padding\n\tbdH = max([node.ypos() + node.screenHeight() for node in selNodes]) + padding\n\tthis.knob('xpos').setValue(bdX)\n\tthis.knob('ypos').setValue(bdY)\n\tthis.knob('bdwidth').setValue(bdW-bdX)\n\tthis.knob('bdheight').setValue(bdH-bdY)")
+                    n.addKnob(button)
+            except:
+                pass
     
         except Exception as e:
-            # In case of any errors, cancel the undo block
+            # In case of any error, cancel the undo block to discard the changes
             nuke.Undo.cancel()
-            print("Error creating backdrop: {e}")
+            print(f"Error creating backdrop: {e}")
     
         else:
-            # End the undo block
+            # End the undo block, confirming the changes
             nuke.Undo.end()
- 
+
+        
     def enableL(self):
         """Enables/disables the label button"""
         if self.labelt.isChecked():
