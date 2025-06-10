@@ -1,6 +1,6 @@
 """ Version/author information """
-__version__ = "1.60"
+__version__ = "1.6.0"
 __author__ = "Samantha Maiolo"
-__date__ = "March 4 2024"
+__date__ = "June 2025"
 __mail__ = "samanthamaiolovfx@gmail.com"
 #__web__ = ""
