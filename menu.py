@@ -31,13 +31,17 @@ def setup():
     settings = Overrides()
     data = settings.restore()
 
+    if not nuke.env["gui"]:
+        _REGISTERED = True
+        return
+
     nuke.menu("Nuke").addCommand("Edit/Backdrop Manager Settings", gui)
     nuke.menu("Node Graph").addCommand("Create Backdrop", guiUI, data["shortcut"])
     nuke.menu("Node Graph").addCommand("Snap Backdrop", wrapped(snap), data["snap"])
     panels.registerWidgetAsPanel(
-    "BackdropManager.panel.BackdropPanel",
-    "Backdrop Manager",
-    "BackdropManager.BackdropPanel",
+        "BackdropManager.panel.BackdropPanel",
+        "Backdrop Manager",
+        "BackdropManager.BackdropPanel",
     )
     nuke.BackdropManagerPanel = BackdropPanel
     _REGISTERED = True

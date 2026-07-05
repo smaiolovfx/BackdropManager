@@ -5,9 +5,13 @@ try:
     from Qt.QtCore import Qt
 except ImportError:
     try:
-        from PySide2 import QtCore, QtGui, QtWidgets
-        from PySide2.QtCore import Qt
+        from PySide6 import QtCore, QtGui, QtWidgets
+        from PySide6.QtCore import Qt
     except ImportError:
-        from PySide import QtCore, QtGui
-        from PySide import QtGui as QtWidgets
-        from PySide.QtCore import Qt
+        try:
+            from PySide2 import QtCore, QtGui, QtWidgets
+            from PySide2.QtCore import Qt
+        except ImportError:
+            from PySide import QtCore, QtGui
+            from PySide import QtGui as QtWidgets
+            from PySide.QtCore import Qt
