@@ -44,15 +44,19 @@ def get_dag_node(dag_widget):
     return nuke.toNode(title.replace(" " + DAG_TITLE, ""))
 
 
+def active_dag_node():
+    """Return the Nuke node for the active DAG, or root if unknown."""
+    active_dag = get_current_dag()
+    if not active_dag:
+        return nuke.root()
+    return get_dag_node(active_dag) or nuke.root()
+
+
 def wrapped(func):
     """Execute a function in the currently active DAG context."""
 
     def wrapper(*args, **kwargs):
-        active_dag = get_current_dag()
-        node = nuke.root()
-        if active_dag:
-            node = get_dag_node(active_dag) or nuke.root()
-        with node:
+        with active_dag_node():
             return func(*args, **kwargs)
 
     return wrapper

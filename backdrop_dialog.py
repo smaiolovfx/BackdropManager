@@ -5,7 +5,7 @@ import traceback
 import nuke
 
 from .colors import hex_to_interface, interface_to_rgb, rgb_to_hex, rgb_to_interface
-from .dag import get_current_dag, get_dag_node, wrapped
+from .dag import active_dag_node, wrapped
 from .qt import QtCore, QtGui, QtWidgets
 from .settings import Overrides
 from .widgets import set_current_text, widget_with_label
@@ -25,6 +25,7 @@ class BackdropManagerUI(QtWidgets.QDialog):
         self.setWindowTitle("Make backdrop")
         self.setMinimumSize(450, 300)
         self.setFocus()
+        self._editing = False
 
         layout = QtWidgets.QVBoxLayout()
         layout.setSpacing(25)
@@ -205,11 +206,14 @@ class BackdropManagerUI(QtWidgets.QDialog):
         QtWidgets.QWidget.closeEvent(self, event)
 
     def changeColor(self, index):
-        label = self.colBox.itemText(index)
-        color = self.colors[index]
-        self.colBox.setStyleSheet("background-color: %s;" % rgb_to_hex(color))
-        if label != "":
-            self.label.setText(label)
+        item_text = self.colBox.itemText(index)
+        if item_text.startswith("#"):
+            hex_color = item_text
+        else:
+            hex_color = rgb_to_hex(self.colors[index])
+        self.colBox.setStyleSheet("background-color: %s;" % hex_color)
+        if not self._editing and item_text != "":
+            self.label.setText(item_text)
 
     def boldT(self):
         if self.boldv is False:
@@ -339,9 +343,7 @@ class BackdropManagerUI(QtWidgets.QDialog):
         bold = "<b>" if self.boldv else ""
         italic = "<i>" if self.italicv else ""
 
-        active_dag = get_current_dag()
-        node = get_dag_node(active_dag) if active_dag else nuke.root()
-        with node:
+        with active_dag_node():
             for selected in nuke.selectedNodes():
                 if self.labelt.isChecked():
                     selected["label"].setValue(alignment + bold + italic + text)
@@ -356,24 +358,26 @@ class BackdropManagerUI(QtWidgets.QDialog):
                     selected["border_width"].setValue(self.w.value())
 
     def switch(self):
-        active_dag = get_current_dag()
-        node = get_dag_node(active_dag) if active_dag else nuke.root()
-        with node:
+        with active_dag_node():
             selected = nuke.selectedNodes()
             for item in selected:
                 item.setSelected(False)
                 if item.Class() == "BackdropNode":
                     item.setSelected(True)
 
-            selection_count = len(selected)
+            selection_count = len(nuke.selectedNodes())
             if selection_count == 1:
                 selected_node = nuke.selectedNode()
                 label = selected_node["label"].value()
                 color = selected_node["tile_color"].value()
 
             self.setWindowTitle("Edit backdrop")
+            self._editing = True
             self.buttonBox.accepted.disconnect()
             self.buttonBox.accepted.connect(self.editBackdrop)
+
+            for i in range(self.colBox.count()):
+                self.colBox.setItemText(i, "")
 
             if selection_count > 1:
                 self.labelt.setVisible(True)
@@ -402,12 +406,19 @@ class BackdropManagerUI(QtWidgets.QDialog):
 
                 color = rgb_to_hex(interface_to_rgb(color))
                 label = label.split(">")[-1]
-                if self.colBox.findText(color) == -1:
+                matched_index = None
+                for i, preset in enumerate(self.colors):
+                    if rgb_to_hex(preset) == color:
+                        matched_index = i
+                        break
+                if matched_index is not None:
+                    self.colBox.setCurrentIndex(matched_index)
+                else:
                     self.colBox.addItem(color)
                     model = self.colBox.model()
-                    row = len(self.data["colors"])
+                    row = self.colBox.count() - 1
                     model.setData(model.index(row, 0), QtGui.QColor(color), QtCore.Qt.BackgroundRole)
-                set_current_text(self.colBox, color)
+                    self.colBox.setCurrentIndex(row)
                 self.colBox.setStyleSheet("background-color: %s;" % color)
                 self.label.setText(label)
                 self.zorder.setValue(selected_node["z_order"].value())
