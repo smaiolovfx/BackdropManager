@@ -76,7 +76,7 @@ class KeySequenceWidget(QtWidgets.QWidget):
     def shortcut(self):
         return self._first_chord(self.edit.keySequence())
 
-    def clear(self):
+    def clear(self, *args):
         self.edit.clear()
         self.keySequenceChanged.emit()
 

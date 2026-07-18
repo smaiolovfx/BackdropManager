@@ -268,10 +268,10 @@ class BackdropManagerSettings(QtWidgets.QDialog):
 
         self.button_cancel = QtWidgets.QPushButton("Cancel")
         self.button_cancel.setToolTip("Close window and revert back to previous saved settings.")
-        self.button_cancel.clicked.connect(self.close)
+        self.button_cancel.clicked.connect(lambda *_: self.close())
         box7.addWidget(self.button_cancel)
 
-    def min(self):
+    def min(self, *args):
         if not self.boxes:
             return
         for widgets in [self.boxes, self.titles]:
@@ -287,7 +287,7 @@ class BackdropManagerSettings(QtWidgets.QDialog):
         self.row -= 1
         self.box_layout.update()
 
-    def add(self):
+    def add(self, *args):
         col = nuke.getColor()
         if col:
             col = interface_to_rgb(col)
@@ -296,7 +296,7 @@ class BackdropManagerSettings(QtWidgets.QDialog):
             self._add_color_preset_row(len(self.boxes), col, "")
             self.box_layout.update()
 
-    def bold(self):
+    def bold(self, *args):
         if self.boldv is False:
             self.boldb.setStyleSheet("font: bold; background-color: #787878;")
             self.boldv = True
@@ -304,7 +304,7 @@ class BackdropManagerSettings(QtWidgets.QDialog):
             self.boldb.setStyleSheet("font: bold; background-color: ;")
             self.boldv = False
 
-    def italic(self):
+    def italic(self, *args):
         if self.italicv is False:
             self.italicb.setStyleSheet("font: italic; background-color: #787878;")
             self.italicv = True
@@ -322,7 +322,7 @@ class BackdropManagerSettings(QtWidgets.QDialog):
         self.colors[color_idx] = col
         btn.setStyleSheet("background-color: %s;" % rgb_to_hex(col))
 
-    def default(self):
+    def default(self, *args):
         message_box = QtWidgets.QMessageBox(self)
         message_box.setText("Clear all settings?")
         message_box.setIcon(QtWidgets.QMessageBox.Warning)

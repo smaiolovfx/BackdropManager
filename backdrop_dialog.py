@@ -214,7 +214,7 @@ class BackdropManagerUI(QtWidgets.QDialog):
         if not self._editing and item_text != "":
             self.label.setText(item_text)
 
-    def boldT(self):
+    def boldT(self, *args):
         if self.boldv is False:
             self.boldb.setStyleSheet("font: bold; background-color: #787878;")
             self.boldv = True
@@ -222,7 +222,7 @@ class BackdropManagerUI(QtWidgets.QDialog):
             self.boldb.setStyleSheet("font: bold; background-color: ;")
             self.boldv = False
 
-    def italicT(self):
+    def italicT(self, *args):
         if self.italicv is False:
             self.italicb.setStyleSheet("font: italic; background-color: #787878;")
             self.italicv = True

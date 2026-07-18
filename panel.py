@@ -51,7 +51,7 @@ class BackdropPanel(QtWidgets.QDialog):
             btn.setIcon(QtGui.QIcon(icon_path(icon)))
             btn.setToolTip(tooltip)
             btn.setFixedSize(40, 25)
-            btn.clicked.connect(callback)
+            btn.clicked.connect(lambda checked=False, cb=callback: cb())
             gbox.addWidget(btn)
 
     def _persist_colors(self):
