@@ -13,12 +13,18 @@ from .panel import BackdropPanel
 from .settings import Overrides
 
 _REGISTERED = False
+_DAG_CONTEXT = 2  # Nuke shortcutContext: window=0, application=1, DAG=2
 
 
 def setup():
     """Register BackdropManager commands, shortcuts, and panels."""
     global _REGISTERED
     if _REGISTERED:
+        return
+
+    if nuke.NUKE_VERSION_MAJOR < 11:
+        nuke.tprint("BackdropManager requires Nuke 11 or later.")
+        _REGISTERED = True
         return
 
     year = datetime.date.today().year
@@ -36,8 +42,7 @@ def setup():
         return
 
     nuke.menu("Nuke").addCommand("Edit/Backdrop Manager Settings", gui)
-    nuke.menu("Node Graph").addCommand("Create Backdrop", guiUI, data["shortcut"])
-    nuke.menu("Node Graph").addCommand("Snap Backdrop", wrapped(snap), data["snap"])
+    _register_node_graph_commands(data)
     panels.registerWidgetAsPanel(
         "BackdropManager.panel.BackdropPanel",
         "Backdrop Manager",
@@ -45,3 +50,23 @@ def setup():
     )
     nuke.BackdropManagerPanel = BackdropPanel
     _REGISTERED = True
+
+
+def apply_shortcuts(data):
+    """Re-bind Node Graph shortcuts from settings (e.g. after Save)."""
+    if not nuke.env["gui"]:
+        return
+    _register_node_graph_commands(data)
+
+
+def _register_node_graph_commands(data):
+    """Add or replace Create/Snap commands with DAG-scoped shortcuts."""
+    node_graph = nuke.menu("Node Graph")
+    entries = (
+        ("Create Backdrop", data.get("shortcut") or "", guiUI),
+        ("Snap Backdrop", data.get("snap") or "", wrapped(snap)),
+    )
+    for name, shortcut, command in entries:
+        if node_graph.findItem(name) is not None:
+            node_graph.removeItem(name)
+        node_graph.addCommand(name, command, shortcut, shortcutContext=_DAG_CONTEXT)

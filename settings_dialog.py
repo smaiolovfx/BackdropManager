@@ -5,7 +5,7 @@ from functools import partial
 import nuke
 
 from .colors import interface_to_rgb, rgb_to_hex, rgb_to_interface
-from .qt import Qt, QtCore, QtGui, QtWidgets
+from .qt import Qt, QtCore, QtGui, QtWidgets, qt_exec
 from .settings import Overrides
 from .widgets import DragButton, KeySequenceWidget, set_current_text, widget_with_label
 
@@ -328,8 +328,11 @@ class BackdropManagerSettings(QtWidgets.QDialog):
         message_box.setIcon(QtWidgets.QMessageBox.Warning)
         message_box.setStandardButtons(QtWidgets.QMessageBox.Reset | QtWidgets.QMessageBox.Cancel)
         message_box.setDefaultButton(QtWidgets.QMessageBox.Cancel)
-        if message_box.exec_() == QtWidgets.QMessageBox.Reset:
+        if qt_exec(message_box) == QtWidgets.QMessageBox.Reset:
             self.settings.clear()
+            from .menu import apply_shortcuts
+
+            apply_shortcuts(self.settings.defaults)
             self.close()
             from .dialog_launchers import gui
 
@@ -337,8 +340,12 @@ class BackdropManagerSettings(QtWidgets.QDialog):
 
     def closeSave(self, evt=None):
         settings = self.data
-        settings["shortcut"] = self.shortcut_widget.shortcut().toString()
-        settings["snap"] = self.snap_widget.shortcut().toString()
+        settings["shortcut"] = self.shortcut_widget.shortcut().toString(
+            QtGui.QKeySequence.PortableText
+        )
+        settings["snap"] = self.snap_widget.shortcut().toString(
+            QtGui.QKeySequence.PortableText
+        )
         settings["padding"] = self.psize.value()
         settings["font"] = self.font.currentText()
         settings["font_size"] = self.fsize.value()
@@ -358,6 +365,9 @@ class BackdropManagerSettings(QtWidgets.QDialog):
 
         self.settings.defaults = settings
         self.settings.save()
+        from .menu import apply_shortcuts
+
+        apply_shortcuts(settings)
         self.close()
         self.closed.emit()
 
