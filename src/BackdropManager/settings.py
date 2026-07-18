@@ -15,7 +15,6 @@ SETTINGS_FILENAME = "backdropmanager_settings.json"
 def _load_json(path):
     try:
         if not os.path.isfile(path):
-            print("Settings file %r does not exist" % (path))
             return None
         with open(path) as stream:
             return json.load(stream)
@@ -41,6 +40,23 @@ def _save_json(obj, path):
     except Exception:
         print("Error saving BackdropManager settings")
         traceback.print_exc()
+
+
+def _merge_loaded(loaded, defaults):
+    """Merge a loaded settings file onto defaults.
+
+    Returns updated dict, or None if loaded is unusable (caller keeps defaults).
+    """
+    try:
+        version = int(loaded["version"])
+        payload = loaded["settings"]
+        if version < 2 or not isinstance(payload, dict):
+            return None
+        merged = dict(defaults)
+        merged.update(payload)
+        return merged
+    except (KeyError, TypeError, ValueError, AttributeError):
+        return None
 
 
 class Overrides(object):
@@ -90,22 +106,33 @@ class Overrides(object):
         self.save()
 
     def restore(self):
+        """Load settings from disk. Always returns a complete defaults dict.
+
+        Missing file → write defaults (first run).
+        Corrupt / wrong shape / old version → keep in-memory defaults, leave file alone.
+        Partial settings → merge onto defaults (missing keys stay default).
+        """
         settings = _load_json(path=self.settings_path)
         self.defaults = self.default_settings()
 
         if settings is None:
-            self.clear()
+            if not os.path.isfile(self.settings_path):
+                self.clear()
+            else:
+                nuke.warning(
+                    "BackdropManager settings at %r could not be read; using defaults."
+                    % self.settings_path
+                )
             return self.defaults
 
-        if int(settings["version"]) >= 2:
-            self.defaults.update(settings["settings"])
+        merged = _merge_loaded(settings, self.defaults)
+        if merged is None:
+            nuke.warning(
+                "BackdropManager settings at %r are invalid or outdated "
+                "(need version >= 2); using defaults."
+                % self.settings_path
+            )
             return self.defaults
 
-        nuke.warning(
-            "Wrong version of backdrop manager config, nothing loaded "
-            "(version %s loaded, version %s is the latest), path was %r. "
-            "Please either delete your settings file or re-download the latest "
-            "BackdropManager."
-            % (int(settings["version"]), SETTINGS_VERSION, self.settings_path)
-        )
+        self.defaults = merged
         return self.defaults

@@ -1,7 +1,7 @@
 """BackdropManager package entry point.
 
-Copy this directory to ``~/.nuke/BackdropManager`` and add this to
-``~/.nuke/menu.py``:
+Copy or symlink ``src/BackdropManager`` to ``~/.nuke/BackdropManager`` and add
+this to ``~/.nuke/menu.py``:
 
 import BackdropManager
 """
