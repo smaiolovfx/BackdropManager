@@ -331,8 +331,10 @@ class BackdropManagerSettings(QtWidgets.QDialog):
         if qt_exec(message_box) == QtWidgets.QMessageBox.Reset:
             self.settings.clear()
             from .menu import apply_shortcuts
+            from .panel import refresh_all
 
             apply_shortcuts(self.settings.defaults)
+            refresh_all()
             self.close()
             from .dialog_launchers import gui
 
@@ -366,8 +368,10 @@ class BackdropManagerSettings(QtWidgets.QDialog):
         self.settings.defaults = settings
         self.settings.save()
         from .menu import apply_shortcuts
+        from .panel import refresh_all
 
         apply_shortcuts(settings)
+        refresh_all()
         self.close()
         self.closed.emit()
 

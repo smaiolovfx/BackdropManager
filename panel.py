@@ -1,6 +1,7 @@
 """Dockable BackdropManager panel."""
 
 from functools import partial
+import weakref
 
 import nuke
 
@@ -13,6 +14,19 @@ from .paths import icon_path
 from .qt import QtGui, QtWidgets
 from .settings import Overrides
 from .widgets import DragButton
+
+_panels = []
+
+
+def refresh_all():
+    """Rebuild color boxes on every live docked panel from current settings."""
+    alive = []
+    for ref in _panels:
+        panel = ref()
+        if panel is not None:
+            alive.append(ref)
+            panel.clear()
+    _panels[:] = alive
 
 
 class BackdropPanel(QtWidgets.QDialog):
@@ -29,6 +43,7 @@ class BackdropPanel(QtWidgets.QDialog):
 
         self._build_toolbar()
         self.makeBoxes()
+        _panels.append(weakref.ref(self))
 
     def _build_toolbar(self):
         gbox = QtWidgets.QHBoxLayout()
