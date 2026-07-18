@@ -312,10 +312,16 @@ class BackdropManagerUI(QtWidgets.QDialog):
                     "\tbdY = min([node.ypos() for node in selNodes]) - padding - 60\n"
                     "\tbdW = max([node.xpos() + node.screenWidth() for node in selNodes]) + padding\n"
                     "\tbdH = max([node.ypos() + node.screenHeight() for node in selNodes]) + padding\n"
-                    "\tthis.knob('xpos').setValue(bdX)\n"
-                    "\tthis.knob('ypos').setValue(bdY)\n"
-                    "\tthis.knob('bdwidth').setValue(bdW-bdX)\n"
-                    "\tthis.knob('bdheight').setValue(bdH-bdY)"
+                    "\tnuke.Undo.begin('Snap Backdrop')\n"
+                    "\ttry:\n"
+                    "\t\tthis.setXYpos(int(bdX), int(bdY))\n"
+                    "\t\tthis.knob('bdwidth').setValue(int(bdW-bdX))\n"
+                    "\t\tthis.knob('bdheight').setValue(int(bdH-bdY))\n"
+                    "\texcept Exception:\n"
+                    "\t\tnuke.Undo.cancel()\n"
+                    "\t\traise\n"
+                    "\telse:\n"
+                    "\t\tnuke.Undo.end()"
                 )
                 node.addKnob(button)
         except Exception:

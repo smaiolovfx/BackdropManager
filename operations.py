@@ -42,7 +42,14 @@ def snap(*args):
     bd_w = max([node.xpos() + node.screenWidth() for node in selected_nodes]) + padding
     bd_h = max([node.ypos() + node.screenHeight() for node in selected_nodes]) + padding
 
-    largest.knob("bdwidth").setValue(bd_w - bd_x)
-    largest.knob("xpos").setValue(bd_x)
-    largest.knob("bdheight").setValue(bd_h - bd_y)
-    largest.knob("ypos").setValue(bd_y)
+    # xpos/ypos.setValue is not undo-cached; setXYpos is.
+    nuke.Undo.begin("Snap Backdrop")
+    try:
+        largest.setXYpos(int(bd_x), int(bd_y))
+        largest.knob("bdwidth").setValue(int(bd_w - bd_x))
+        largest.knob("bdheight").setValue(int(bd_h - bd_y))
+    except Exception:
+        nuke.Undo.cancel()
+        raise
+    else:
+        nuke.Undo.end()
