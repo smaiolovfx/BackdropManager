@@ -78,12 +78,6 @@ class KeySequenceWidget(QtWidgets.QWidget):
             self.button.setKeySequence(QtGui.QKeySequence())
         self.keySequenceChanged.emit()
 
-    def setModifierlessAllowed(self, allow):
-        self.button._modifierlessAllowed = allow
-
-    def isModifierlessAllowed(self):
-        return self.button._modifierlessAllowed
-
 
 class KeySequenceButton(QtWidgets.QPushButton):
     MAX_NUM_KEYSTROKES = 1

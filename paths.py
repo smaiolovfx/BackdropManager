@@ -3,7 +3,6 @@
 import os
 
 PACKAGE_DIR = os.path.dirname(__file__)
-PROJECT_ROOT = PACKAGE_DIR
 ICON_DIR = os.path.join(PACKAGE_DIR, "icons")
 
 

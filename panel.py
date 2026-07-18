@@ -51,7 +51,7 @@ class BackdropPanel(QtWidgets.QDialog):
             btn.setIcon(QtGui.QIcon(icon_path(icon)))
             btn.setToolTip(tooltip)
             btn.setFixedSize(40, 25)
-            btn.clicked.connect(lambda checked=False, cb=callback: cb())
+            btn.clicked.connect(callback)
             gbox.addWidget(btn)
 
     def _persist_colors(self):
@@ -93,18 +93,15 @@ class BackdropPanel(QtWidgets.QDialog):
 
         event.accept()
 
-    def apply_style_selected(self, *args):
+    def _apply_style(self, nodes):
         self.d = self.settings.restore()
         alignment = "<" + self.d["align"] + ">"
         bold = "<b>" if self.d["bold"] is True else ""
         italic = "<i>" if self.d["italic"] is True else ""
 
-        for node in nuke.selectedNodes():
-            node.setSelected(False)
-            if node.Class() == "BackdropNode":
-                node.setSelected(True)
-
-        for node in nuke.selectedNodes():
+        for node in nodes:
+            if node.Class() != "BackdropNode":
+                continue
             label = node["label"].value().split(">")[-1]
             node.knob("label").setValue(alignment + bold + italic + label)
             node.knob("note_font").setValue(self.d["font"])
@@ -114,22 +111,15 @@ class BackdropPanel(QtWidgets.QDialog):
             node.knob("border_width").setValue(self.d["width"])
             node.knob("bookmark").setValue(self.d["bookmark"])
 
-    def apply_style_all(self, *args):
-        self.d = self.settings.restore()
-        alignment = "<" + self.d["align"] + ">"
-        bold = "<b>" if self.d["bold"] is True else ""
-        italic = "<i>" if self.d["italic"] is True else ""
-
-        for node in nuke.allNodes():
+    def apply_style_selected(self, *args):
+        for node in nuke.selectedNodes():
+            node.setSelected(False)
             if node.Class() == "BackdropNode":
-                label = node["label"].value().split(">")[-1]
-                node.knob("label").setValue(alignment + bold + italic + label)
-                node.knob("note_font").setValue(self.d["font"])
-                node.knob("note_font_size").setValue(self.d["font_size"])
-                if NUKE_VERSION_MAJOR >= 12:
-                    node.knob("appearance").setValue(self.d["style"])
-                node.knob("border_width").setValue(self.d["width"])
-                node.knob("bookmark").setValue(self.d["bookmark"])
+                node.setSelected(True)
+        self._apply_style(nuke.selectedNodes())
+
+    def apply_style_all(self, *args):
+        self._apply_style(nuke.allNodes())
 
     def makeBoxes(self):
         self.box_group = QtWidgets.QGroupBox()
@@ -160,19 +150,19 @@ class BackdropPanel(QtWidgets.QDialog):
         minb = QtWidgets.QPushButton("-")
         minb.setToolTip("Remove last color.")
         minb.setFixedSize(20, 20)
-        minb.clicked.connect(lambda checked=False: self.min())
+        minb.clicked.connect(self.min)
         self.box.addWidget(minb)
 
         addb = QtWidgets.QPushButton("+")
         addb.setToolTip("Add a new color.")
-        addb.clicked.connect(lambda checked=False: self.add())
+        addb.clicked.connect(self.add)
         addb.setFixedSize(20, 20)
         self.box.addWidget(addb)
 
         refresh = QtWidgets.QPushButton("Reload")
         refresh.setToolTip("Refresh color boxes")
         refresh.setFixedSize(60, 20)
-        refresh.clicked.connect(lambda checked=False: self.clear())
+        refresh.clicked.connect(self.clear)
         self.box.addWidget(refresh)
 
     def min(self, *args):
@@ -209,11 +199,7 @@ class BackdropPanel(QtWidgets.QDialog):
         self.makeBoxes()
 
     def setColor(self, color_source, *args):
-        if isinstance(color_source, int):
-            color_value = self.colors[color_source]
-        else:
-            color_value = color_source.data
-        color = rgb_to_interface(color_value)
+        color = rgb_to_interface(color_source.data)
 
         for node in nuke.selectedNodes():
             node.setSelected(False)

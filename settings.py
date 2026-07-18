@@ -6,22 +6,19 @@ import traceback
 
 import nuke
 
-from .paths import PROJECT_ROOT
+from .paths import PACKAGE_DIR
 
 SETTINGS_VERSION = 3
 SETTINGS_FILENAME = "backdropmanager_settings.json"
 
 
 def _load_json(path):
-    def _load_internal():
+    try:
         if not os.path.isfile(path):
             print("Settings file %r does not exist" % (path))
             return None
         with open(path) as stream:
             return json.load(stream)
-
-    try:
-        return _load_internal()
     except Exception:
         print("Error loading %r" % path)
         traceback.print_exc()
@@ -29,7 +26,7 @@ def _load_json(path):
 
 
 def _save_json(obj, path):
-    def _save_internal():
+    try:
         directory = os.path.dirname(path)
         if not os.path.isdir(directory):
             try:
@@ -41,19 +38,9 @@ def _save_json(obj, path):
         with open(path, "w") as stream:
             json.dump(obj, fp=stream, sort_keys=True, indent=1, separators=(",", ": "))
             stream.write("\n")
-
-    try:
-        _save_internal()
     except Exception:
         print("Error saving BackdropManager settings")
         traceback.print_exc()
-
-
-def load_settings():
-    """Load settings from disk."""
-    settings = Overrides()
-    settings.restore()
-    return settings
 
 
 class Overrides(object):
@@ -61,8 +48,8 @@ class Overrides(object):
 
     def __init__(self):
         nuke_dir = os.path.expanduser("~/.nuke/")
-        if nuke_dir in PROJECT_ROOT:
-            self.settings_path = os.path.join(PROJECT_ROOT, SETTINGS_FILENAME)
+        if nuke_dir in PACKAGE_DIR:
+            self.settings_path = os.path.join(PACKAGE_DIR, SETTINGS_FILENAME)
         else:
             self.settings_path = os.path.join(nuke_dir, SETTINGS_FILENAME)
         self.defaults = self.default_settings()
@@ -122,6 +109,3 @@ class Overrides(object):
             % (int(settings["version"]), SETTINGS_VERSION, self.settings_path)
         )
         return self.defaults
-
-    def load(self):
-        return {"settings": self.defaults, "version": SETTINGS_VERSION}

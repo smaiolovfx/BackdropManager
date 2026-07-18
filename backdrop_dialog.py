@@ -80,8 +80,7 @@ class BackdropManagerUI(QtWidgets.QDialog):
         self.colBox.setPalette(palette)
 
         model = self.colBox.model()
-        for color, label in zip(self.colors, self.labels):
-            row = self.colors.index(color)
+        for row, (color, label) in enumerate(zip(self.colors, self.labels)):
             self.colBox.addItem(label)
             model.setData(model.index(row, 0), QtGui.QColor(rgb_to_hex(color)), QtCore.Qt.BackgroundRole)
 
@@ -406,11 +405,10 @@ class BackdropManagerUI(QtWidgets.QDialog):
 
                 color = rgb_to_hex(interface_to_rgb(color))
                 label = label.split(">")[-1]
-                matched_index = None
-                for i, preset in enumerate(self.colors):
-                    if rgb_to_hex(preset) == color:
-                        matched_index = i
-                        break
+                matched_index = next(
+                    (i for i, preset in enumerate(self.colors) if rgb_to_hex(preset) == color),
+                    None,
+                )
                 if matched_index is not None:
                     self.colBox.setCurrentIndex(matched_index)
                 else:

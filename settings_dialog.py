@@ -61,7 +61,6 @@ class BackdropManagerSettings(QtWidgets.QDialog):
 
         self.shortcut_widget = KeySequenceWidget()
         self.shortcut_widget.setShortcut(QtGui.QKeySequence(data["shortcut"]))
-        self.shortcut_widget.keySequenceChanged.connect(self.updateSC)
         box.addWidget(widget_with_label(self.shortcut_widget, "Shortcut"))
         box.addStretch(1)
 
@@ -72,7 +71,6 @@ class BackdropManagerSettings(QtWidgets.QDialog):
 
         self.snap_widget = KeySequenceWidget()
         self.snap_widget.setShortcut(QtGui.QKeySequence(data["snap"]))
-        self.snap_widget.keySequenceChanged.connect(self.updateSnap)
         box7.addWidget(widget_with_label(self.snap_widget, "Snap"))
 
         self.psize = QtWidgets.QSpinBox(self)
@@ -80,7 +78,6 @@ class BackdropManagerSettings(QtWidgets.QDialog):
         self.psize.setFixedSize(80, 24)
         self.psize.setRange(0, 999)
         self.psize.setValue(data["padding"])
-        self.psize.valueChanged.connect(self.updateP)
         box7.addWidget(widget_with_label(self.psize, "padding"))
         box7.addStretch(1)
 
@@ -101,7 +98,6 @@ class BackdropManagerSettings(QtWidgets.QDialog):
         self.fsize.setFixedSize(80, 24)
         self.fsize.setRange(0, 999)
         self.fsize.setValue(data["font_size"])
-        self.fsize.valueChanged.connect(self.updateFS)
         box2.addWidget(self.fsize)
 
         self.boldv = data["bold"]
@@ -157,7 +153,6 @@ class BackdropManagerSettings(QtWidgets.QDialog):
             self.w.setToolTip("Set default border width value.")
             self.w.setFixedSize(80, 24)
             self.w.setValue(data["width"])
-            self.w.valueChanged.connect(self.updateW)
             box4.addWidget(widget_with_label(self.w, "width"))
             box4.addStretch(1)
 
@@ -169,7 +164,6 @@ class BackdropManagerSettings(QtWidgets.QDialog):
         self.bm = QtWidgets.QCheckBox("bookmark")
         self.bm.setToolTip("Set default bookmark value.")
         self.bm.setChecked(data["bookmark"])
-        self.bm.stateChanged.connect(self.updateB)
         box5.addWidget(self.bm)
 
         box6 = QtWidgets.QHBoxLayout()
@@ -182,7 +176,6 @@ class BackdropManagerSettings(QtWidgets.QDialog):
         self.zorder.setFixedSize(80, 24)
         self.zorder.setRange(-999, 999)
         self.zorder.setValue(data["zorder"])
-        self.zorder.valueChanged.connect(self.updateZ)
         box6.addWidget(widget_with_label(self.zorder, "Z Order"))
         box6.addStretch(1)
 
@@ -303,24 +296,6 @@ class BackdropManagerSettings(QtWidgets.QDialog):
             self._add_color_preset_row(len(self.boxes), col, "")
             self.box_layout.update()
 
-    def updateFS(self, *args):
-        self.data["font_size"] = self.fsize.value()
-
-    def updateP(self, *args):
-        self.data["padding"] = self.psize.value()
-
-    def updateSC(self, *args):
-        self.data["shortcut"] = self.shortcut_widget.shortcut().toString()
-
-    def updateSnap(self, *args):
-        self.data["snap"] = self.snap_widget.shortcut().toString()
-
-    def updateW(self, *args):
-        self.data["width"] = self.w.value()
-
-    def updateZ(self, *args):
-        self.data["zorder"] = self.zorder.value()
-
     def bold(self):
         if self.boldv is False:
             self.boldb.setStyleSheet("font: bold; background-color: #787878;")
@@ -328,7 +303,6 @@ class BackdropManagerSettings(QtWidgets.QDialog):
         else:
             self.boldb.setStyleSheet("font: bold; background-color: ;")
             self.boldv = False
-        self.data["bold"] = self.boldv
 
     def italic(self):
         if self.italicv is False:
@@ -337,10 +311,6 @@ class BackdropManagerSettings(QtWidgets.QDialog):
         else:
             self.italicb.setStyleSheet("font: italic; background-color: ;")
             self.italicv = False
-        self.data["italic"] = self.italicv
-
-    def updateB(self, *args):
-        self.data["bookmark"] = self.bm.isChecked()
 
     def btnClicked(self, color_idx, btn, *args):
         color = self.colors[color_idx]
@@ -358,33 +328,33 @@ class BackdropManagerSettings(QtWidgets.QDialog):
         message_box.setIcon(QtWidgets.QMessageBox.Warning)
         message_box.setStandardButtons(QtWidgets.QMessageBox.Reset | QtWidgets.QMessageBox.Cancel)
         message_box.setDefaultButton(QtWidgets.QMessageBox.Cancel)
-        response = message_box.exec_()
-
-        if response == QtWidgets.QMessageBox.Reset:
+        if message_box.exec_() == QtWidgets.QMessageBox.Reset:
             self.settings.clear()
             self.close()
             from .dialog_launchers import gui
 
             gui()
-        elif response == QtWidgets.QMessageBox.Cancel:
-            pass
-        else:
-            raise RuntimeError("Unhandled button")
 
     def closeSave(self, evt=None):
         settings = self.data
+        settings["shortcut"] = self.shortcut_widget.shortcut().toString()
+        settings["snap"] = self.snap_widget.shortcut().toString()
+        settings["padding"] = self.psize.value()
         settings["font"] = self.font.currentText()
+        settings["font_size"] = self.fsize.value()
+        settings["bold"] = self.boldv
+        settings["italic"] = self.italicv
         settings["align"] = self.format.currentText()
+        settings["bookmark"] = self.bm.isChecked()
+        settings["zorder"] = self.zorder.value()
         settings["xpos"] = self.pos().x()
         settings["ypos"] = self.pos().y()
         settings["colors"] = self.colors
-
-        for widget in self.titles:
-            self.labels[self.titles.index(widget)] = widget.text()
-        settings["labels"] = self.labels
+        settings["labels"] = [widget.text() for widget in self.titles]
 
         if NUKE_VERSION_MAJOR >= 12:
             settings["style"] = self.style_drop.currentText()
+            settings["width"] = self.w.value()
 
         self.settings.defaults = settings
         self.settings.save()
