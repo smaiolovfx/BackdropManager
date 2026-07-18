@@ -18,7 +18,7 @@ def backdrop_areas(nodes):
     return areas, backdrop_dict
 
 
-def snap():
+def snap(*args):
     """Snap the largest selected backdrop to the other selected nodes."""
     settings = Overrides()
     data = settings.restore()

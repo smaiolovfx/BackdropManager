@@ -40,8 +40,8 @@ class BackdropPanel(QtWidgets.QDialog):
             ("Backdrop.png", "Make backdrop", guiUI),
             ("Edit.png", "Edit selected backdrops", guiEdit),
             ("Toggle.png", "Toggle fill/border mode on selected backdrops", wrapped(self.toggle)),
-            ("Selected.png", "Set selected backdrops to default style", wrapped(self.setStyleSel)),
-            ("All.png", "Set all backdrops to default style", wrapped(self.setStyle)),
+            ("Selected.png", "Set selected backdrops to default style", wrapped(self.apply_style_selected)),
+            ("All.png", "Set all backdrops to default style", wrapped(self.apply_style_all)),
             ("Snap.png", "Snap backdrop size", wrapped(snap)),
             ("Settings.png", "Open settings", gui),
         ]
@@ -51,12 +51,15 @@ class BackdropPanel(QtWidgets.QDialog):
             btn.setIcon(QtGui.QIcon(icon_path(icon)))
             btn.setToolTip(tooltip)
             btn.setFixedSize(40, 25)
-            btn.clicked.connect(callback)
+            btn.clicked.connect(lambda checked=False, cb=callback: cb())
             gbox.addWidget(btn)
 
+    def _persist_colors(self):
+        self.settings.defaults["colors"] = list(self.colors)
+        self.settings.defaults["labels"] = list(self.labels)
+        self.settings.save()
+
     def get_data(self):
-        self.settings = Overrides()
-        data = self.settings.restore()
         self.colors = []
         self.labels = []
         for index in range(self.box_layout.count()):
@@ -65,9 +68,7 @@ class BackdropPanel(QtWidgets.QDialog):
                 continue
             self.colors.append(widget.data)
             self.labels.append(getattr(widget, "label", ""))
-        data["colors"] = self.colors
-        data["labels"] = self.labels
-        self.settings.save()
+        self._persist_colors()
 
     def dragEnterEvent(self, event):
         event.accept()
@@ -92,7 +93,7 @@ class BackdropPanel(QtWidgets.QDialog):
 
         event.accept()
 
-    def setStyleSel(self):
+    def apply_style_selected(self, *args):
         self.d = self.settings.restore()
         alignment = "<" + self.d["align"] + ">"
         bold = "<b>" if self.d["bold"] is True else ""
@@ -113,7 +114,7 @@ class BackdropPanel(QtWidgets.QDialog):
             node.knob("border_width").setValue(self.d["width"])
             node.knob("bookmark").setValue(self.d["bookmark"])
 
-    def setStyle(self):
+    def apply_style_all(self, *args):
         self.d = self.settings.restore()
         alignment = "<" + self.d["align"] + ">"
         bold = "<b>" if self.d["bold"] is True else ""
@@ -159,37 +160,37 @@ class BackdropPanel(QtWidgets.QDialog):
         minb = QtWidgets.QPushButton("-")
         minb.setToolTip("Remove last color.")
         minb.setFixedSize(20, 20)
-        minb.clicked.connect(self.min)
+        minb.clicked.connect(lambda checked=False: self.min())
         self.box.addWidget(minb)
 
         addb = QtWidgets.QPushButton("+")
         addb.setToolTip("Add a new color.")
-        addb.clicked.connect(self.add)
+        addb.clicked.connect(lambda checked=False: self.add())
         addb.setFixedSize(20, 20)
         self.box.addWidget(addb)
 
         refresh = QtWidgets.QPushButton("Reload")
         refresh.setToolTip("Refresh color boxes")
         refresh.setFixedSize(60, 20)
-        refresh.clicked.connect(self.clear)
+        refresh.clicked.connect(lambda checked=False: self.clear())
         self.box.addWidget(refresh)
 
-    def min(self):
+    def min(self, *args):
         if not self.colors:
             return
         self.colors.pop(-1)
         if self.labels:
             self.labels.pop(-1)
-        self.settings.save()
+        self._persist_colors()
         self.clear()
 
-    def add(self):
+    def add(self, *args):
         col = nuke.getColor()
         if col:
             col = interface_to_rgb(col)
             self.colors.append(col)
             self.labels.append("")
-            self.settings.save()
+            self._persist_colors()
             self._add_color_button(col, "")
 
     def _add_color_button(self, color, label):
@@ -202,7 +203,7 @@ class BackdropPanel(QtWidgets.QDialog):
         self.box_layout.addWidget(btn)
         btn.clicked.connect(partial(wrapped(self.setColor), btn))
 
-    def clear(self):
+    def clear(self, *args):
         self.box_group.deleteLater()
         self.box.deleteLater()
         self.makeBoxes()
@@ -222,7 +223,7 @@ class BackdropPanel(QtWidgets.QDialog):
         for node in nuke.selectedNodes():
             node.knob("tile_color").setValue(color)
 
-    def toggle(self):
+    def toggle(self, *args):
         if NUKE_VERSION_MAJOR < 12:
             return
 

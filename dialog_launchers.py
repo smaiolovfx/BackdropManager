@@ -26,7 +26,7 @@ def _on_edit_closed():
     _edit_dialog = None
 
 
-def gui():
+def gui(*args):
     global _settings_dialog
     load_settings()
 
@@ -42,7 +42,7 @@ def gui():
     _settings_dialog.show()
 
 
-def guiUI():
+def guiUI(*args):
     global _backdrop_dialog
     load_settings()
 
@@ -57,7 +57,7 @@ def guiUI():
     _backdrop_dialog.show()
 
 
-def guiEdit():
+def guiEdit(*args):
     global _edit_dialog
     load_settings()
 
@@ -77,3 +77,5 @@ def guiEdit():
         _edit_dialog.switch()
         _edit_dialog.closed.connect(_on_edit_closed)
         _edit_dialog.show()
+    else:
+        nuke.message("Select one or more Backdrop nodes to edit.")
