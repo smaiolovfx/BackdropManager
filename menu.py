@@ -13,7 +13,6 @@ from .panel import BackdropPanel
 from .settings import Overrides
 
 _REGISTERED = False
-_DAG_CONTEXT = 2  # Nuke shortcutContext: window=0, application=1, DAG=2
 
 
 def setup():
@@ -60,7 +59,9 @@ def apply_shortcuts(data):
 
 
 def _register_node_graph_commands(data):
-    """Add or replace Create/Snap commands with DAG-scoped shortcuts."""
+    """Add or replace Create/Snap commands (window context — matches original)."""
+    # ponytail: no shortcutContext=2 — DAG context on the Node Graph menu
+    # made hotkeys dead; window default is what worked historically.
     node_graph = nuke.menu("Node Graph")
     entries = (
         ("Create Backdrop", data.get("shortcut") or "", guiUI),
@@ -69,4 +70,4 @@ def _register_node_graph_commands(data):
     for name, shortcut, command in entries:
         if node_graph.findItem(name) is not None:
             node_graph.removeItem(name)
-        node_graph.addCommand(name, command, shortcut, shortcutContext=_DAG_CONTEXT)
+        node_graph.addCommand(name, command, shortcut)

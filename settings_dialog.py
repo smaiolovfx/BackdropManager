@@ -271,6 +271,20 @@ class BackdropManagerSettings(QtWidgets.QDialog):
         self.button_cancel.clicked.connect(lambda *_: self.close())
         box7.addWidget(self.button_cancel)
 
+    def sync_colors(self, colors, labels):
+        """Rebuild color presets from panel (or other) live edits."""
+        while self.boxes:
+            self.min()
+        self.colors = list(colors)
+        self.labels = list(labels)
+        while len(self.labels) < len(self.colors):
+            self.labels.append("")
+        self.data["colors"] = self.colors
+        self.data["labels"] = self.labels
+        for index, color in enumerate(self.colors):
+            self._add_color_preset_row(index, color, self.labels[index])
+        self.box_layout.update()
+
     def min(self, *args):
         if not self.boxes:
             return

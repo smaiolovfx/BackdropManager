@@ -5,7 +5,7 @@ import traceback
 import nuke
 
 from .colors import hex_to_interface, interface_to_rgb, rgb_to_hex, rgb_to_interface
-from .dag import active_dag_node, wrapped
+from .dag import current_dag, in_dag, remember_dag
 from .qt import QtCore, QtGui, QtWidgets
 from .settings import Overrides
 from .widgets import set_current_text, widget_with_label
@@ -21,11 +21,12 @@ class BackdropManagerUI(QtWidgets.QDialog):
 
         overrides = Overrides()
         self.data = overrides.restore()
+        self._dag_node = None
+        self._editing = False
 
         self.setWindowTitle("Make backdrop")
         self.setMinimumSize(450, 300)
         self.setFocus()
-        self._editing = False
 
         layout = QtWidgets.QVBoxLayout()
         layout.setSpacing(25)
@@ -47,9 +48,26 @@ class BackdropManagerUI(QtWidgets.QDialog):
             QtWidgets.QDialogButtonBox.Cancel | QtWidgets.QDialogButtonBox.Ok
         )
         layout.addWidget(self.buttonBox)
-        self.buttonBox.accepted.connect(wrapped(self.makeBackdrop))
+        self.buttonBox.accepted.connect(self._accept)
         self.buttonBox.rejected.connect(self.close)
         self.label.setFocus()
+
+    def set_dag_context(self, node):
+        """Pin OK/edit to the DAG that was active when this dialog opened."""
+        self._dag_node = node
+        remember_dag(node)
+
+    def reset_to_create(self):
+        """Restore create-backdrop mode (dialog may have been reused)."""
+        self._editing = False
+        self.setWindowTitle("Make backdrop")
+
+    def _accept(self, *args):
+        with in_dag(self._dag_node):
+            if self._editing:
+                self.editBackdrop()
+            else:
+                self.makeBackdrop()
 
     def _build_color_controls(self, set_layout, overrides):
         box = QtWidgets.QHBoxLayout()
@@ -348,22 +366,21 @@ class BackdropManagerUI(QtWidgets.QDialog):
         bold = "<b>" if self.boldv else ""
         italic = "<i>" if self.italicv else ""
 
-        with active_dag_node():
-            for selected in nuke.selectedNodes():
-                if self.labelt.isChecked():
-                    selected["label"].setValue(alignment + bold + italic + text)
-                if self.zt.isChecked():
-                    selected["z_order"].setValue(z_order)
-                selected["tile_color"].setValue(color)
-                selected["bookmark"].setValue(self.bm.isChecked())
-                selected["note_font"].setValue(self.font.currentText())
-                selected["note_font_size"].setValue(self.fsize.value())
-                if NUKE_VERSION_MAJOR >= 12:
-                    selected["appearance"].setValue(self.style_drop.currentText())
-                    selected["border_width"].setValue(self.w.value())
+        for selected in nuke.selectedNodes():
+            if self.labelt.isChecked():
+                selected["label"].setValue(alignment + bold + italic + text)
+            if self.zt.isChecked():
+                selected["z_order"].setValue(z_order)
+            selected["tile_color"].setValue(color)
+            selected["bookmark"].setValue(self.bm.isChecked())
+            selected["note_font"].setValue(self.font.currentText())
+            selected["note_font_size"].setValue(self.fsize.value())
+            if NUKE_VERSION_MAJOR >= 12:
+                selected["appearance"].setValue(self.style_drop.currentText())
+                selected["border_width"].setValue(self.w.value())
 
     def switch(self):
-        with active_dag_node():
+        with in_dag(self._dag_node):
             selected = nuke.selectedNodes()
             for item in selected:
                 item.setSelected(False)
@@ -376,61 +393,59 @@ class BackdropManagerUI(QtWidgets.QDialog):
                 label = selected_node["label"].value()
                 color = selected_node["tile_color"].value()
 
-            self.setWindowTitle("Edit backdrop")
-            self._editing = True
-            self.buttonBox.accepted.disconnect()
-            self.buttonBox.accepted.connect(self.editBackdrop)
+        self.setWindowTitle("Edit backdrop")
+        self._editing = True
 
-            for i in range(self.colBox.count()):
-                self.colBox.setItemText(i, "")
+        for i in range(self.colBox.count()):
+            self.colBox.setItemText(i, "")
 
-            if selection_count > 1:
-                self.labelt.setVisible(True)
-                self.box6.setContentsMargins(16, 0, 0, 0)
-                self.zt.setVisible(True)
-                self.box5.setContentsMargins(0, 0, 0, 0)
-            elif selection_count == 1:
-                if "<center>" in label:
-                    set_current_text(self.format, "center")
-                else:
-                    set_current_text(self.format, "left")
-
-                self.boldv = "<b>" in label
-                self.boldb.setStyleSheet(
-                    "font: bold; background-color: #787878;"
-                    if self.boldv
-                    else "font: bold; background-color: ;"
-                )
-
-                self.italicv = "<i>" in label
-                self.italicb.setStyleSheet(
-                    "font: italic; background-color: #787878;"
-                    if self.italicv
-                    else "font: italic; background-color: ;"
-                )
-
-                color = rgb_to_hex(interface_to_rgb(color))
-                label = label.split(">")[-1]
-                matched_index = next(
-                    (i for i, preset in enumerate(self.colors) if rgb_to_hex(preset) == color),
-                    None,
-                )
-                if matched_index is not None:
-                    self.colBox.setCurrentIndex(matched_index)
-                else:
-                    self.colBox.addItem(color)
-                    model = self.colBox.model()
-                    row = self.colBox.count() - 1
-                    model.setData(model.index(row, 0), QtGui.QColor(color), QtCore.Qt.BackgroundRole)
-                    self.colBox.setCurrentIndex(row)
-                self.colBox.setStyleSheet("background-color: %s;" % color)
-                self.label.setText(label)
-                self.zorder.setValue(selected_node["z_order"].value())
-                if NUKE_VERSION_MAJOR >= 12:
-                    set_current_text(self.style_drop, selected_node["appearance"].value())
-                    self.w.setValue(selected_node["border_width"].value())
-                self.bm.setChecked(selected_node["bookmark"].value())
-                set_current_text(self.font, selected_node["note_font"].value())
-                self.fsize.setValue(selected_node["note_font_size"].value())
+        if selection_count > 1:
+            self.labelt.setVisible(True)
+            self.box6.setContentsMargins(16, 0, 0, 0)
+            self.zt.setVisible(True)
+            self.box5.setContentsMargins(0, 0, 0, 0)
+        elif selection_count == 1:
+            if "<center>" in label:
+                set_current_text(self.format, "center")
             else:
-                self.zorder.setValue(self.data["zorder"])
+                set_current_text(self.format, "left")
+
+            self.boldv = "<b>" in label
+            self.boldb.setStyleSheet(
+                "font: bold; background-color: #787878;"
+                if self.boldv
+                else "font: bold; background-color: ;"
+            )
+
+            self.italicv = "<i>" in label
+            self.italicb.setStyleSheet(
+                "font: italic; background-color: #787878;"
+                if self.italicv
+                else "font: italic; background-color: ;"
+            )
+
+            color = rgb_to_hex(interface_to_rgb(color))
+            label = label.split(">")[-1]
+            matched_index = next(
+                (i for i, preset in enumerate(self.colors) if rgb_to_hex(preset) == color),
+                None,
+            )
+            if matched_index is not None:
+                self.colBox.setCurrentIndex(matched_index)
+            else:
+                self.colBox.addItem(color)
+                model = self.colBox.model()
+                row = self.colBox.count() - 1
+                model.setData(model.index(row, 0), QtGui.QColor(color), QtCore.Qt.BackgroundRole)
+                self.colBox.setCurrentIndex(row)
+            self.colBox.setStyleSheet("background-color: %s;" % color)
+            self.label.setText(label)
+            self.zorder.setValue(selected_node["z_order"].value())
+            if NUKE_VERSION_MAJOR >= 12:
+                set_current_text(self.style_drop, selected_node["appearance"].value())
+                self.w.setValue(selected_node["border_width"].value())
+            self.bm.setChecked(selected_node["bookmark"].value())
+            set_current_text(self.font, selected_node["note_font"].value())
+            self.fsize.setValue(selected_node["note_font_size"].value())
+        else:
+            self.zorder.setValue(self.data["zorder"])

@@ -1,6 +1,5 @@
 """Dockable BackdropManager panel."""
 
-from functools import partial
 import weakref
 
 import nuke
@@ -174,11 +173,12 @@ class BackdropPanel(QtWidgets.QDialog):
         addb.setFixedSize(20, 20)
         self.box.addWidget(addb)
 
-        refresh = QtWidgets.QPushButton("Reload")
-        refresh.setToolTip("Refresh color boxes")
-        refresh.setFixedSize(60, 20)
-        refresh.clicked.connect(self.clear)
-        self.box.addWidget(refresh)
+    def _sync_open_settings(self):
+        from .dialog_launchers import current_settings_dialog
+
+        dialog = current_settings_dialog()
+        if dialog is not None:
+            dialog.sync_colors(self.colors, self.labels)
 
     def min(self, *args):
         if not self.colors:
@@ -187,6 +187,7 @@ class BackdropPanel(QtWidgets.QDialog):
         if self.labels:
             self.labels.pop(-1)
         self._persist_colors()
+        self._sync_open_settings()
         self.clear()
 
     def add(self, *args):
@@ -197,6 +198,7 @@ class BackdropPanel(QtWidgets.QDialog):
             self.labels.append("")
             self._persist_colors()
             self._add_color_button(col, "")
+            self._sync_open_settings()
 
     def _add_color_button(self, color, label):
         btn = DragButton()
@@ -206,7 +208,8 @@ class BackdropPanel(QtWidgets.QDialog):
         btn.label = label
         btn.setFixedSize(20, 20)
         self.box_layout.addWidget(btn)
-        btn.clicked.connect(partial(wrapped(self.setColor), btn))
+        apply = wrapped(self.setColor)
+        btn.clicked.connect(lambda checked=False, b=btn, fn=apply: fn(b))
 
     def clear(self, *args):
         self.box_group.deleteLater()
@@ -215,14 +218,9 @@ class BackdropPanel(QtWidgets.QDialog):
 
     def setColor(self, color_source, *args):
         color = rgb_to_interface(color_source.data)
-
         for node in nuke.selectedNodes():
-            node.setSelected(False)
-            if node.Class() == "StickyNote" or node.Class() == "BackdropNode":
-                node.setSelected(True)
-
-        for node in nuke.selectedNodes():
-            node.knob("tile_color").setValue(color)
+            if node.Class() in ("StickyNote", "BackdropNode"):
+                node.knob("tile_color").setValue(color)
 
     def toggle(self, *args):
         if NUKE_VERSION_MAJOR < 12:
