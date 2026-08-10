@@ -2,9 +2,12 @@
 A backdrop manager for Nuke's backdrops.
 Parts based on shortcuteditor by Ben Dickson.
 
+Requires Nuke 11 or later (PySide2 / PySide6).
+
 This tool adds settings in Nuke under /Edit/Backdrop Manager Settings, and a panel for ease of use under Windows/Custom/Backdrop Manager.
 
-To use, add the whole BackdropManager folder to your ~/.nuke/ directory.
+To use, copy or symlink this folder into your ``~/.nuke/`` directory
+(so you have ``~/.nuke/BackdropManager/``).
 
 In ~/.nuke/menu.py add this:
 import BackdropManager
