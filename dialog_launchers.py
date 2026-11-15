@@ -4,9 +4,12 @@ import nuke
 
 from .backdrop_dialog import BackdropManagerUI
 from .dag import current_dag, in_dag
+from .qt import QtCore
 from .settings_dialog import BackdropManagerSettings
 
 _dialogs = {"settings": None, "backdrop": None, "edit": None}
+# Closed dialogs kept alive until Qt finishes the click that closed them.
+_closing = []
 
 
 def _show_or_raise(key, factory, prepare=None):
@@ -25,7 +28,9 @@ def _show_or_raise(key, factory, prepare=None):
         prepare(dialog)
 
     def _clear():
+        _closing.append(_dialogs[key])
         _dialogs[key] = None
+        QtCore.QTimer.singleShot(0, _closing.clear)
 
     dialog.closed.connect(_clear)
     _dialogs[key] = dialog
@@ -50,20 +55,20 @@ def guiUI(*args):
         dialog.set_dag_context(ctx)
         dialog.reset_to_create()
 
-    _show_or_raise("backdrop", BackdropManagerUI, prepare=prepare)
+    # The dialog reads the selection (for Z order) when built: build it in ctx.
+    with in_dag(ctx):
+        _show_or_raise("backdrop", BackdropManagerUI, prepare=prepare)
 
 
 def guiEdit(*args):
     ctx = current_dag()
     with in_dag(ctx):
-        for node in nuke.selectedNodes():
-            node.setSelected(False)
-            if node.Class() == "BackdropNode":
-                node.setSelected(True)
-
-        if len(nuke.selectedNodes()) < 1:
+        selected = nuke.selectedNodes()
+        if not any(node.Class() == "BackdropNode" for node in selected):
             nuke.message("Select one or more Backdrop nodes to edit.")
             return
+        for node in selected:
+            node.setSelected(node.Class() == "BackdropNode")
 
     def prepare(dialog):
         dialog.set_dag_context(ctx)

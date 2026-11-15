@@ -5,7 +5,7 @@ import traceback
 import nuke
 
 from .colors import hex_to_interface, interface_to_rgb, rgb_to_hex, rgb_to_interface
-from .dag import in_dag
+from .dag import in_dag, undo_step
 from .operations import label_text
 from .qt import QtCore, QtGui, QtWidgets
 from .settings import Overrides
@@ -370,19 +370,20 @@ class BackdropManagerUI(QtWidgets.QDialog):
         bold = "<b>" if self.boldv else ""
         italic = "<i>" if self.italicv else ""
 
-        for selected in nuke.selectedNodes():
-            if self.labelt.isChecked():
-                selected["label"].setValue(alignment + bold + italic + text)
-            if self.zt.isChecked():
-                selected["z_order"].setValue(z_order)
-            if color is not None:
-                selected["tile_color"].setValue(color)
-            selected["bookmark"].setValue(self.bm.isChecked())
-            selected["note_font"].setValue(self.font.currentText())
-            selected["note_font_size"].setValue(self.fsize.value())
-            if NUKE_VERSION_MAJOR >= 12:
-                selected["appearance"].setValue(self.style_drop.currentText())
-                selected["border_width"].setValue(self.w.value())
+        with undo_step("Edit Backdrop"):
+            for selected in nuke.selectedNodes():
+                if self.labelt.isChecked():
+                    selected["label"].setValue(alignment + bold + italic + text)
+                if self.zt.isChecked():
+                    selected["z_order"].setValue(z_order)
+                if color is not None:
+                    selected["tile_color"].setValue(color)
+                selected["bookmark"].setValue(self.bm.isChecked())
+                selected["note_font"].setValue(self.font.currentText())
+                selected["note_font_size"].setValue(self.fsize.value())
+                if NUKE_VERSION_MAJOR >= 12:
+                    selected["appearance"].setValue(self.style_drop.currentText())
+                    selected["border_width"].setValue(self.w.value())
 
     def switch(self):
         with in_dag(self._dag_node):

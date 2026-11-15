@@ -90,7 +90,7 @@ class BackdropPanel(QtWidgets.QDialog):
     def dropEvent(self, event):
         pos = event.pos()
         widget = event.source()
-        if widget is None:
+        if widget is None or widget.parent() is not self.box_group:
             event.ignore()
             return
 
@@ -122,7 +122,7 @@ class BackdropPanel(QtWidgets.QDialog):
             node.knob("note_font_size").setValue(self.d["font_size"])
             if NUKE_VERSION_MAJOR >= 12:
                 node.knob("appearance").setValue(self.d["style"])
-            node.knob("border_width").setValue(self.d["width"])
+                node.knob("border_width").setValue(self.d["width"])
             node.knob("bookmark").setValue(self.d["bookmark"])
 
     def apply_style_selected(self, *args):

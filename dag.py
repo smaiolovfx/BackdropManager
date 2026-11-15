@@ -46,11 +46,24 @@ def in_dag(node=None):
             target.end()
 
 
+@contextmanager
+def undo_step(name):
+    """Record everything in the block as one undo step; revert it on error."""
+    nuke.Undo.begin(name)
+    try:
+        yield
+    except Exception:
+        nuke.Undo.cancel()
+        raise
+    else:
+        nuke.Undo.end()
+
+
 def wrapped(func):
-    """Execute a function in the currently active DAG context."""
+    """Execute a function in the active DAG context as one undo step."""
 
     def wrapper(*args, **kwargs):
-        with in_dag():
+        with in_dag(), undo_step("Backdrop Manager"):
             return func(*args, **kwargs)
 
     return wrapper
