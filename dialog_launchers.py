@@ -4,7 +4,7 @@ import nuke
 
 from .backdrop_dialog import BackdropManagerUI
 from .dag import current_dag, in_dag
-from .operations import select_only_backdrops
+from .operations import selected_backdrops
 from .qt import QtCore
 from .settings_dialog import BackdropManagerSettings
 
@@ -64,7 +64,7 @@ def guiUI(*args):
 def guiEdit(*args):
     ctx = current_dag()
     with in_dag(ctx):
-        if not select_only_backdrops():
+        if not selected_backdrops():
             nuke.message("Select one or more Backdrop nodes to edit.")
             return
 

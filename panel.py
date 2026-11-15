@@ -8,7 +8,7 @@ from .colors import interface_to_rgb, rgb_to_hex, rgb_to_interface
 from .dag import wrapped
 from .backdrop_dialog import NUKE_VERSION_MAJOR
 from .dialog_launchers import gui, guiEdit, guiUI
-from .operations import label_text, select_only_backdrops, snap
+from .operations import label_text, selected_backdrops, snap
 from .paths import icon_path
 from .qt import QtGui, QtWidgets
 from .settings import Overrides
@@ -126,7 +126,7 @@ class BackdropPanel(QtWidgets.QDialog):
             node.knob("bookmark").setValue(self.d["bookmark"])
 
     def apply_style_selected(self, *args):
-        self._apply_style(select_only_backdrops())
+        self._apply_style(selected_backdrops())
 
     def apply_style_all(self, *args):
         # No class filter: with one, recurseGroups skips Group contents (Nuke 17).
@@ -223,7 +223,7 @@ class BackdropPanel(QtWidgets.QDialog):
         if NUKE_VERSION_MAJOR < 12:
             return
 
-        for node in select_only_backdrops():
+        for node in selected_backdrops():
             if node["appearance"].value() == "Fill":
                 node.knob("appearance").setValue("Border")
             else:

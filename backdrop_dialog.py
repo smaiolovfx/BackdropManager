@@ -6,7 +6,7 @@ import nuke
 
 from .colors import hex_to_interface, interface_to_rgb, rgb_to_hex, rgb_to_interface
 from .dag import in_dag, undo_step
-from .operations import label_text, select_only_backdrops
+from .operations import label_text, selected_backdrops
 from .qt import QtCore, QtGui, QtWidgets
 from .settings import Overrides
 from .widgets import set_current_text, widget_with_label
@@ -208,7 +208,7 @@ class BackdropManagerUI(QtWidgets.QDialog):
         self.box5.addWidget(self.zt)
 
         zval = self.data["zorder"]
-        selected_bd = [n for n in nuke.selectedNodes() if n.Class() == "BackdropNode"]
+        selected_bd = selected_backdrops()
         if selected_bd:
             zval = min([node["z_order"].value() for node in selected_bd]) - 1
 
@@ -371,7 +371,7 @@ class BackdropManagerUI(QtWidgets.QDialog):
         italic = "<i>" if self.italicv else ""
 
         with undo_step("Edit Backdrop"):
-            for selected in nuke.selectedNodes():
+            for selected in selected_backdrops():
                 if self.labelt.isChecked():
                     selected["label"].setValue(alignment + bold + italic + text)
                 if self.zt.isChecked():
@@ -387,7 +387,7 @@ class BackdropManagerUI(QtWidgets.QDialog):
 
     def switch(self):
         with in_dag(self._dag_node):
-            backdrops = select_only_backdrops()
+            backdrops = selected_backdrops()
             selection_count = len(backdrops)
             if selection_count == 1:
                 selected_node = backdrops[0]

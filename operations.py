@@ -10,17 +10,9 @@ from .settings import Overrides
 _STYLE_TAGS = re.compile(r"^(?:<(?:left|center|b|i)>)*")
 
 
-def select_only_backdrops():
-    """Narrow the selection to its backdrops and return them.
-
-    With no backdrop selected, the selection is left alone and [] returned.
-    """
-    selected = nuke.selectedNodes()
-    backdrops = [node for node in selected if node.Class() == "BackdropNode"]
-    if backdrops:
-        for node in selected:
-            node.setSelected(node.Class() == "BackdropNode")
-    return backdrops
+def selected_backdrops():
+    """Backdrops in the current selection. The selection itself is left alone."""
+    return [node for node in nuke.selectedNodes() if node.Class() == "BackdropNode"]
 
 
 def label_text(label):
