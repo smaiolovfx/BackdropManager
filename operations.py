@@ -1,8 +1,18 @@
 """Backdrop commands that operate on the current Nuke script."""
 
+import re
+
 import nuke
 
 from .settings import Overrides
+
+# Tags this plugin prepends to labels: alignment, then bold, then italic.
+_STYLE_TAGS = re.compile(r"^(?:<(?:left|center|b|i)>)*")
+
+
+def label_text(label):
+    """Return a backdrop label without the leading style tags we add."""
+    return _STYLE_TAGS.sub("", label)
 
 
 def backdrop_areas(nodes):

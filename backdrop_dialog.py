@@ -6,6 +6,7 @@ import nuke
 
 from .colors import hex_to_interface, interface_to_rgb, rgb_to_hex, rgb_to_interface
 from .dag import in_dag
+from .operations import label_text
 from .qt import QtCore, QtGui, QtWidgets
 from .settings import Overrides
 from .widgets import set_current_text, widget_with_label
@@ -23,6 +24,7 @@ class BackdropManagerUI(QtWidgets.QDialog):
         self.data = overrides.restore()
         self._dag_node = None
         self._editing = False
+        self._color_changed = False
 
         self.setWindowTitle("Make backdrop")
         self.setMinimumSize(450, 300)
@@ -228,6 +230,7 @@ class BackdropManagerUI(QtWidgets.QDialog):
         else:
             hex_color = rgb_to_hex(self.colors[index])
         self.colBox.setStyleSheet("background-color: %s;" % hex_color)
+        self._color_changed = True
         if not self._editing and item_text != "":
             self.label.setText(item_text)
 
@@ -357,10 +360,12 @@ class BackdropManagerUI(QtWidgets.QDialog):
         z_order = self.zorder.value()
         alignment = "<" + self.format.currentText() + ">"
 
-        if self.colBox.currentText().startswith("#"):
-            color = hex_to_interface(self.colBox.currentText())
-        else:
-            color = rgb_to_interface(self.colors[self.colBox.currentIndex()])
+        color = None
+        if self._color_changed:
+            if self.colBox.currentText().startswith("#"):
+                color = hex_to_interface(self.colBox.currentText())
+            else:
+                color = rgb_to_interface(self.colors[self.colBox.currentIndex()])
 
         bold = "<b>" if self.boldv else ""
         italic = "<i>" if self.italicv else ""
@@ -370,7 +375,8 @@ class BackdropManagerUI(QtWidgets.QDialog):
                 selected["label"].setValue(alignment + bold + italic + text)
             if self.zt.isChecked():
                 selected["z_order"].setValue(z_order)
-            selected["tile_color"].setValue(color)
+            if color is not None:
+                selected["tile_color"].setValue(color)
             selected["bookmark"].setValue(self.bm.isChecked())
             selected["note_font"].setValue(self.font.currentText())
             selected["note_font_size"].setValue(self.fsize.value())
@@ -394,11 +400,14 @@ class BackdropManagerUI(QtWidgets.QDialog):
 
         self.setWindowTitle("Edit backdrop")
         self._editing = True
+        self._color_changed = False
 
         for i in range(self.colBox.count()):
             self.colBox.setItemText(i, "")
 
         if selection_count > 1:
+            self.labelt.setChecked(False)
+            self.zt.setChecked(False)
             self.labelt.setVisible(True)
             self.box6.setContentsMargins(16, 0, 0, 0)
             self.zt.setVisible(True)
@@ -424,7 +433,7 @@ class BackdropManagerUI(QtWidgets.QDialog):
             )
 
             color = rgb_to_hex(interface_to_rgb(color))
-            label = label.split(">")[-1]
+            label = label_text(label)
             matched_index = next(
                 (i for i, preset in enumerate(self.colors) if rgb_to_hex(preset) == color),
                 None,

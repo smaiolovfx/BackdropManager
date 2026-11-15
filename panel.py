@@ -8,7 +8,7 @@ from .colors import interface_to_rgb, rgb_to_hex, rgb_to_interface
 from .dag import wrapped
 from .backdrop_dialog import NUKE_VERSION_MAJOR
 from .dialog_launchers import gui, guiEdit, guiUI
-from .operations import snap
+from .operations import label_text, snap
 from .paths import icon_path
 from .qt import QtGui, QtWidgets
 from .settings import Overrides
@@ -116,7 +116,7 @@ class BackdropPanel(QtWidgets.QDialog):
         for node in nodes:
             if node.Class() != "BackdropNode":
                 continue
-            label = node["label"].value().split(">")[-1]
+            label = label_text(node["label"].value())
             node.knob("label").setValue(alignment + bold + italic + label)
             node.knob("note_font").setValue(self.d["font"])
             node.knob("note_font_size").setValue(self.d["font_size"])
@@ -133,7 +133,8 @@ class BackdropPanel(QtWidgets.QDialog):
         self._apply_style(nuke.selectedNodes())
 
     def apply_style_all(self, *args):
-        self._apply_style(nuke.allNodes())
+        # No class filter: with one, recurseGroups skips Group contents (Nuke 17).
+        self._apply_style(nuke.allNodes(group=nuke.root(), recurseGroups=True))
 
     def makeBoxes(self):
         self.box_group = QtWidgets.QGroupBox()
