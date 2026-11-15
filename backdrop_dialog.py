@@ -5,7 +5,7 @@ import traceback
 import nuke
 
 from .colors import hex_to_interface, interface_to_rgb, rgb_to_hex, rgb_to_interface
-from .dag import current_dag, in_dag, remember_dag
+from .dag import in_dag
 from .qt import QtCore, QtGui, QtWidgets
 from .settings import Overrides
 from .widgets import set_current_text, widget_with_label
@@ -55,7 +55,6 @@ class BackdropManagerUI(QtWidgets.QDialog):
     def set_dag_context(self, node):
         """Pin OK/edit to the DAG that was active when this dialog opened."""
         self._dag_node = node
-        remember_dag(node)
 
     def reset_to_create(self):
         """Restore create-backdrop mode (dialog may have been reused)."""

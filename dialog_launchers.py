@@ -3,7 +3,7 @@
 import nuke
 
 from .backdrop_dialog import BackdropManagerUI
-from .dag import current_dag, in_dag, remember_dag
+from .dag import current_dag, in_dag
 from .settings_dialog import BackdropManagerSettings
 
 _dialogs = {"settings": None, "backdrop": None, "edit": None}
@@ -45,7 +45,6 @@ def gui(*args):
 
 def guiUI(*args):
     ctx = current_dag()
-    remember_dag(ctx)
 
     def prepare(dialog):
         dialog.set_dag_context(ctx)
@@ -56,7 +55,6 @@ def guiUI(*args):
 
 def guiEdit(*args):
     ctx = current_dag()
-    remember_dag(ctx)
     with in_dag(ctx):
         for node in nuke.selectedNodes():
             node.setSelected(False)
