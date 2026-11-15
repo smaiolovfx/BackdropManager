@@ -6,7 +6,7 @@ import nuke
 
 from .colors import hex_to_interface, interface_to_rgb, rgb_to_hex, rgb_to_interface
 from .dag import in_dag, undo_step
-from .operations import label_text
+from .operations import label_text, select_only_backdrops
 from .qt import QtCore, QtGui, QtWidgets
 from .settings import Overrides
 from .widgets import set_current_text, widget_with_label
@@ -387,15 +387,10 @@ class BackdropManagerUI(QtWidgets.QDialog):
 
     def switch(self):
         with in_dag(self._dag_node):
-            selected = nuke.selectedNodes()
-            for item in selected:
-                item.setSelected(False)
-                if item.Class() == "BackdropNode":
-                    item.setSelected(True)
-
-            selection_count = len(nuke.selectedNodes())
+            backdrops = select_only_backdrops()
+            selection_count = len(backdrops)
             if selection_count == 1:
-                selected_node = nuke.selectedNode()
+                selected_node = backdrops[0]
                 label = selected_node["label"].value()
                 color = selected_node["tile_color"].value()
 
